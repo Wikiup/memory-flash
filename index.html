@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Memory Flash — Speed Memory Test</title>
+  <meta name="description" content="Test your memory and speed with this number recall game. How many digits can you remember?">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :root {
+      --bg-dark: #0a0a0f;
+      --bg-card: #12121a;
+      --bg-key: #1a1a24;
+      --bg-key-hover: #252532;
+      --bg-key-active: #2d2d3d;
+      --accent: #6366f1;
+      --accent-glow: rgba(99, 102, 241, 0.4);
+      --success: #10b981;
+      --success-glow: rgba(16, 185, 129, 0.4);
+      --error: #ef4444;
+      --error-glow: rgba(239, 68, 68, 0.4);
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100dvh;
+      padding: 1rem;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 380px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+    }
+
+    .title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.25rem;
+    }
+
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
+
+    .stat-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    /* Display Area */
+    .display-area {
+      background: var(--bg-card);
+      border-radius: 1.25rem;
+      padding: 2rem 1.5rem;
+      text-align: center;
+      min-height: 140px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .number-display {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 3rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      min-height: 3.5rem;
+      transition: all 0.3s ease;
+    }
+
+    .number-display.showing {
+      color: var(--accent);
+      text-shadow: 0 0 30px var(--accent-glow);
+      animation: pulse 0.5s ease-in-out infinite alternate;
+    }
+
+    .number-display.input {
+      color: var(--text-primary);
+    }
+
+    .number-display.correct {
+      color: var(--success);
+      text-shadow: 0 0 30px var(--success-glow);
+    }
+
+    .number-display.wrong {
+      color: var(--error);
+      text-shadow: 0 0 30px var(--error-glow);
+      animation: shake 0.4s ease;
+    }
+
+    @keyframes pulse {
+      from { opacity: 0.8; transform: scale(1); }
+      to { opacity: 1; transform: scale(1.02); }
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-8px); }
+      40% { transform: translateX(8px); }
+      60% { transform: translateX(-6px); }
+      80% { transform: translateX(6px); }
+    }
+
+    .instruction {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-top: 0.75rem;
+    }
+
+    .timer-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), #a855f7);
+      border-radius: 0 0 1.25rem 1.25rem;
+      transition: width 0.1s linear;
+    }
+
+    /* Keypad */
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+    }
+
+    .key {
+      aspect-ratio: 1.2;
+      background: var(--bg-key);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 1rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.75rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+
+    .key:hover {
+      background: var(--bg-key-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .key:active {
+      background: var(--bg-key-active);
+      transform: translateY(0);
+    }
+
+    .key.zero {
+      grid-column: 2;
+    }
+
+    .key:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Action Buttons */
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 1rem;
+      border: none;
+      border-radius: 0.875rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #7c3aed);
+      color: white;
+      box-shadow: 0 4px 16px var(--accent-glow);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px var(--accent-glow);
+    }
+
+    .btn-secondary {
+      background: var(--bg-key);
+      color: var(--text-secondary);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-key-hover);
+      color: var(--text-primary);
+    }
+
+    /* Game Over Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+      z-index: 100;
+    }
+
+    .modal-overlay.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal {
+      background: var(--bg-card);
+      border-radius: 1.5rem;
+      padding: 2rem;
+      text-align: center;
+      max-width: 320px;
+      width: 90%;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transform: scale(0.9);
+      transition: transform 0.3s ease;
+    }
+
+    .modal-overlay.visible .modal {
+      transform: scale(1);
+    }
+
+    .modal h2 {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      color: var(--accent);
+    }
+
+    .modal .final-score {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 4rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .modal .score-label {
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .modal .best-score {
+      color: var(--success);
+      font-weight: 600;
+      margin-top: 0.5rem;
+      min-height: 1.5rem;
+    }
+
+    .modal .btn {
+      margin-top: 1.5rem;
+      width: 100%;
+    }
+
+    /* Responsive */
+    @media (max-height: 700px) {
+      .container { gap: 1rem; }
+      .display-area { padding: 1.5rem 1rem; min-height: 120px; }
+      .number-display { font-size: 2.5rem; }
+      .key { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1 class="title">Memory Flash</h1>
+      <div class="stats">
+        <div>Level: <span class="stat-value" id="level">1</span></div>
+        <div>Best: <span class="stat-value" id="best">0</span></div>
+        <div>Time: <span class="stat-value" id="time">0.0s</span></div>
+      </div>
+    </header>
+
+    <div class="display-area">
+      <div class="number-display" id="display">—</div>
+      <div class="instruction" id="instruction">Press Start to begin</div>
+      <div class="timer-bar" id="timerBar" style="width: 0%"></div>
+    </div>
+
+    <div class="keypad" id="keypad">
+      <button class="key" data-num="1">1</button>
+      <button class="key" data-num="2">2</button>
+      <button class="key" data-num="3">3</button>
+      <button class="key" data-num="4">4</button>
+      <button class="key" data-num="5">5</button>
+      <button class="key" data-num="6">6</button>
+      <button class="key" data-num="7">7</button>
+      <button class="key" data-num="8">8</button>
+      <button class="key" data-num="9">9</button>
+      <button class="key zero" data-num="0">0</button>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="startBtn">Start</button>
+      <button class="btn btn-secondary" id="resetBtn">Reset</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <h2>Game Over!</h2>
+      <div class="score-label">You reached level</div>
+      <div class="final-score" id="finalScore">0</div>
+      <div class="best-score" id="newBest"></div>
+      <button class="btn btn-primary" id="playAgainBtn">Play Again</button>
+    </div>
+  </div>
+
+  <script>
+    const display = document.getElementById('display');
+    const instruction = document.getElementById('instruction');
+    const timerBar = document.getElementById('timerBar');
+    const levelStat = document.getElementById('level');
+    const bestStat = document.getElementById('best');
+    const timeStat = document.getElementById('time');
+    const keypad = document.getElementById('keypad');
+    const startBtn = document.getElementById('startBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const modal = document.getElementById('modal');
+    const finalScore = document.getElementById('finalScore');
+    const newBest = document.getElementById('newBest');
+    const playAgainBtn = document.getElementById('playAgainBtn');
+
+    let level = 1;
+    let bestLevel = parseInt(localStorage.getItem('memoryFlashBest') || '0');
+    let currentNumber = '';
+    let userInput = '';
+    let gameState = 'idle'; // idle, showing, input
+    let showStartTime = 0;
+    let totalTime = 0;
+    let timerInterval = null;
+
+    // Initialize
+    bestStat.textContent = bestLevel;
+    setKeysEnabled(false);
+
+    function generateNumber(digits) {
+      let num = '';
+      for (let i = 0; i < digits; i++) {
+        // First digit shouldn't be 0 for multi-digit numbers
+        if (i === 0 && digits > 1) {
+          num += Math.floor(Math.random() * 9) + 1;
+        } else {
+          num += Math.floor(Math.random() * 10);
+        }
+      }
+      return num;
+    }
+
+    function setKeysEnabled(enabled) {
+      keypad.querySelectorAll('.key').forEach(key => {
+        key.disabled = !enabled;
+      });
+    }
+
+    function showNumber() {
+      gameState = 'showing';
+      currentNumber = generateNumber(level);
+      userInput = '';
+      
+      display.textContent = currentNumber;
+      display.className = 'number-display showing';
+      instruction.textContent = 'Memorize this number...';
+      setKeysEnabled(false);
+      startBtn.disabled = true;
+
+      // Calculate show time: starts at 1.5s, decreases slightly per level
+      const showTime = Math.max(800, 1500 - (level - 1) * 100);
+      
+      // Animate timer bar
+      timerBar.style.transition = 'none';
+      timerBar.style.width = '100%';
+      requestAnimationFrame(() => {
+        timerBar.style.transition = `width ${showTime}ms linear`;
+        timerBar.style.width = '0%';
+      });
+
+      setTimeout(() => {
+        startInput();
+      }, showTime);
+    }
+
+    function startInput() {
+      gameState = 'input';
+      display.textContent = '_'.repeat(level);
+      display.className = 'number-display input';
+      instruction.textContent = 'Enter the number!';
+      setKeysEnabled(true);
+      showStartTime = Date.now();
+      
+      // Start time tracking
+      timerInterval = setInterval(() => {
+        const elapsed = (Date.now() - showStartTime) / 1000;
+        timeStat.textContent = elapsed.toFixed(1) + 's';
+      }, 100);
+    }
+
+    function handleKeyPress(num) {
+      if (gameState !== 'input') return;
+
+      userInput += num;
+      
+      // Update display with entered digits and remaining underscores
+      const remaining = level - userInput.length;
+      display.textContent = userInput + '_'.repeat(remaining);
+
+      if (userInput.length === level) {
+        clearInterval(timerInterval);
+        const elapsed = (Date.now() - showStartTime) / 1000;
+        totalTime += elapsed;
+        
+        if (userInput === currentNumber) {
+          // Correct!
+          display.className = 'number-display correct';
+          instruction.textContent = 'Correct! 🎉';
+          setKeysEnabled(false);
+          
+          level++;
+          levelStat.textContent = level;
+          
+          setTimeout(() => {
+            showNumber();
+          }, 800);
+        } else {
+          // Wrong!
+          display.className = 'number-display wrong';
+          instruction.textContent = `Wrong! It was ${currentNumber}`;
+          setKeysEnabled(false);
+          gameOver();
+        }
+      }
+    }
+
+    function gameOver() {
+      gameState = 'idle';
+      const reachedLevel = level - 1;
+      
+      setTimeout(() => {
+        finalScore.textContent = reachedLevel;
+        
+        if (reachedLevel > bestLevel) {
+          bestLevel = reachedLevel;
+          localStorage.setItem('memoryFlashBest', bestLevel.toString());
+          bestStat.textContent = bestLevel;
+          newBest.textContent = '🏆 New Best!';
+        } else {
+          newBest.textContent = '';
+        }
+        
+        modal.classList.add('visible');
+      }, 1000);
+    }
+
+    function startGame() {
+      level = 1;
+      totalTime = 0;
+      levelStat.textContent = level;
+      timeStat.textContent = '0.0s';
+      startBtn.textContent = 'Playing...';
+      showNumber();
+    }
+
+    function resetGame() {
+      clearInterval(timerInterval);
+      gameState = 'idle';
+      level = 1;
+      totalTime = 0;
+      userInput = '';
+      currentNumber = '';
+      
+      display.textContent = '—';
+      display.className = 'number-display';
+      instruction.textContent = 'Press Start to begin';
+      levelStat.textContent = level;
+      timeStat.textContent = '0.0s';
+      timerBar.style.width = '0%';
+      
+      setKeysEnabled(false);
+      startBtn.disabled = false;
+      startBtn.textContent = 'Start';
+    }
+
+    // Event Listeners
+    keypad.addEventListener('click', (e) => {
+      if (e.target.classList.contains('key') && !e.target.disabled) {
+        handleKeyPress(e.target.dataset.num);
+      }
+    });
+
+    // Keyboard support
+    document.addEventListener('keydown', (e) => {
+      if (gameState === 'input' && /^[0-9]$/.test(e.key)) {
+        handleKeyPress(e.key);
+      } else if (e.key === 'Enter' && gameState === 'idle') {
+        if (modal.classList.contains('visible')) {
+          modal.classList.remove('visible');
+          setTimeout(startGame, 100);
+        } else {
+          startGame();
+        }
+      }
+    });
+
+    startBtn.addEventListener('click', startGame);
+    resetBtn.addEventListener('click', resetGame);
+    
+    playAgainBtn.addEventListener('click', () => {
+      modal.classList.remove('visible');
+      setTimeout(() => {
+        resetGame();
+        startGame();
+      }, 300);
+    });
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.classList.remove('visible');
+        resetGame();
+      }
+    });
+  </script>
+</body>
+</html>
