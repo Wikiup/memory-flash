@@ -2,351 +2,403 @@
 <html lang="en" data-theme="dark">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Memory Flash — Speed Memory Training</title>
-    <meta name="description" content="Train your memory with progressive number recall. How far can you go?">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Memory Flash — Speed Memory Training</title>
+  <meta name="description" content="Train your memory with progressive number recall. How far can you go?">
 
-    <!-- External Dependencies -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap"
-        rel="stylesheet">
+  <!-- External Dependencies -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap"
+    rel="stylesheet">
 
-    <!-- App CSS (order matters) -->
-    <link rel="stylesheet" href="css/variables.css">
-    <link rel="stylesheet" href="css/base.css">
-    <link rel="stylesheet" href="css/components.css">
-    <link rel="stylesheet" href="css/game.css">
+  <!-- App CSS (order matters) -->
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/game.css">
 </head>
 
 <body>
-    <!-- Mode Selection Screen -->
-    <div class="screen" id="modeScreen">
-        <h1 class="screen-title">Memory Flash</h1>
-        <p class="screen-subtitle">1 digit = 1 second<br>10 digits = 10 seconds<br>Then the real challenge begins...</p>
-        <div class="mode-cards">
-            <div class="mode-card chill" data-mode="chill">
-                <h3>🌴 Chill Mode</h3>
-                <p>5 lives • Extra time • More power-ups. Learn at your pace.</p>
-            </div>
-            <div class="mode-card zen" data-mode="zen">
-                <h3>🧘 Zen Mode</h3>
-                <p>No lives • No pressure • 10 rounds then review. Pure practice.</p>
-            </div>
-            <div class="mode-card normal" data-mode="normal">
-                <h3>⚡ Normal Mode</h3>
-                <p>3 lives • Standard timing • Earn power-ups. Balanced challenge.</p>
-            </div>
-            <div class="mode-card hardcore" data-mode="hardcore">
-                <h3>💀 Hardcore Mode</h3>
-                <p>1 life • No mercy • No power-ups. Pure memory.</p>
-            </div>
+  <!-- Mode Selection Screen -->
+  <div class="screen" id="modeScreen">
+    <h1 class="screen-title">Memory Flash</h1>
+    <p class="screen-subtitle">1 digit = 1 second<br>10 digits = 10 seconds<br>Then the real challenge begins...</p>
+    <div class="mode-cards">
+      <div class="mode-card chill" data-mode="chill">
+        <h3>🌴 Chill Mode</h3>
+        <p>5 lives • Extra time • More power-ups. Learn at your pace.</p>
+      </div>
+      <div class="mode-card zen" data-mode="zen">
+        <h3>🧘 Zen Mode</h3>
+        <p>No lives • No pressure • 10 rounds then review. Pure practice.</p>
+      </div>
+      <div class="mode-card normal" data-mode="normal">
+        <h3>⚡ Normal Mode</h3>
+        <p>3 lives • Standard timing • Earn power-ups. Balanced challenge.</p>
+      </div>
+      <div class="mode-card hardcore" data-mode="hardcore">
+        <h3>💀 Hardcore Mode</h3>
+        <p>1 life • No mercy • No power-ups. Pure memory.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Container -->
+  <div class="container">
+    <header class="header">
+      <h1 class="title">Memory Flash</h1>
+    </header>
+
+    <div class="status-bar">
+      <div class="lives" id="livesDisplay">
+        <span class="heart">❤️</span>
+        <span class="heart">❤️</span>
+        <span class="heart">❤️</span>
+      </div>
+      <div class="power-ups" id="powerUps">
+        <div class="power-up" id="revealBtn" title="Reveal number (R)">
+          <span class="icon">🔍</span>
+          <span class="count" id="revealCount">3</span>
         </div>
+        <div class="power-up" id="freezeBtn" title="+2s next round (F)">
+          <span class="icon">⏱️</span>
+          <span class="count" id="freezeCount">2</span>
+        </div>
+      </div>
+      <button class="settings-btn" id="leaderboardBtn" title="Leaderboard" style="right: 5.5rem;">🏆</button>
+      <button class="settings-btn" id="shortcutsBtn" title="Keyboard Shortcuts" style="right: 3rem;">⌨️</button>
+      <button class="settings-btn" id="settingsBtn" title="Settings">⚙️</button>
     </div>
 
-    <!-- Game Container -->
-    <div class="container">
-        <header class="header">
-            <h1 class="title">Memory Flash</h1>
-        </header>
+    <!-- Leaderboard / Auth Modal -->
+    <div class="settings-modal-overlay" id="leaderboardModalOverlay">
+      <div class="settings-modal" style="max-width: 400px;">
+        <div class="settings-header">
+          <h2>Leaderboard</h2>
+          <button class="close-btn" id="closeLeaderboardBtn">×</button>
+        </div>
 
-        <div class="status-bar">
-            <div class="lives" id="livesDisplay">
-                <span class="heart">❤️</span>
-                <span class="heart">❤️</span>
-                <span class="heart">❤️</span>
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="scores">Top Scores</button>
+          <button class="tab-btn" data-tab="account" id="accountTabBtn">My Account</button>
+        </div>
+
+        <!-- Scores Tab -->
+        <div class="tab-content active" id="tab-scores">
+          <div class="score-filters">
+            <button class="filter-btn active" data-filter="normal">Normal</button>
+            <button class="filter-btn" data-filter="chill">Chill</button>
+            <button class="filter-btn" data-filter="hardcore">Hardcore</button>
+          </div>
+          <div class="leaderboard-list" id="leaderboardList">
+            <div class="loading-spinner">Loading...</div>
+          </div>
+        </div>
+
+        <!-- Account Tab -->
+        <div class="tab-content" id="tab-account">
+          <div id="authSection">
+            <p class="auth-intro">Sign in to save your high scores to the global leaderboard.</p>
+            <div class="form-group">
+              <input type="email" id="emailInput" placeholder="Email" class="form-input">
             </div>
-            <div class="power-ups" id="powerUps">
-                <div class="power-up" id="revealBtn" title="Reveal number (R)">
-                    <span class="icon">🔍</span>
-                    <span class="count" id="revealCount">3</span>
-                </div>
-                <div class="power-up" id="freezeBtn" title="+2s next round (F)">
-                    <span class="icon">⏱️</span>
-                    <span class="count" id="freezeCount">2</span>
-                </div>
+            <div class="form-group">
+              <input type="password" id="passwordInput" placeholder="Password" class="form-input">
             </div>
-            <button class="settings-btn" id="leaderboardBtn" title="Leaderboard" style="right: 5.5rem;">🏆</button>
-            <button class="settings-btn" id="shortcutsBtn" title="Keyboard Shortcuts" style="right: 3rem;">⌨️</button>
-            <button class="settings-btn" id="settingsBtn" title="Settings">⚙️</button>
-        </div>
-
-        <!-- Leaderboard / Auth Modal -->
-        <div class="settings-modal-overlay" id="leaderboardModalOverlay">
-            <div class="settings-modal" style="max-width: 400px;">
-                <div class="settings-header">
-                    <h2>Leaderboard</h2>
-                    <button class="close-btn" id="closeLeaderboardBtn">×</button>
-                </div>
-
-                <div class="tabs">
-                    <button class="tab-btn active" data-tab="scores">Top Scores</button>
-                    <button class="tab-btn" data-tab="account" id="accountTabBtn">My Account</button>
-                </div>
-
-                <!-- Scores Tab -->
-                <div class="tab-content active" id="tab-scores">
-                    <div class="score-filters">
-                        <button class="filter-btn active" data-filter="normal">Normal</button>
-                        <button class="filter-btn" data-filter="chill">Chill</button>
-                        <button class="filter-btn" data-filter="hardcore">Hardcore</button>
-                    </div>
-                    <div class="leaderboard-list" id="leaderboardList">
-                        <div class="loading-spinner">Loading...</div>
-                    </div>
-                </div>
-
-                <!-- Account Tab -->
-                <div class="tab-content" id="tab-account">
-                    <div id="authSection">
-                        <p class="auth-intro">Sign in to save your high scores to the global leaderboard.</p>
-                        <div class="form-group">
-                            <input type="email" id="emailInput" placeholder="Email" class="form-input">
-                        </div>
-                        <div class="form-group">
-                            <input type="password" id="passwordInput" placeholder="Password" class="form-input">
-                        </div>
-                        <div class="auth-actions">
-                            <button class="btn btn-primary" id="loginBtn">Log In</button>
-                            <button class="btn btn-secondary" id="signupBtn">Sign Up</button>
-                        </div>
-                        <div id="authMessage" class="auth-message"></div>
-                    </div>
-
-                    <div id="profileSection" style="display: none;">
-                        <div class="profile-header">
-                            <div class="avatar">👤</div>
-                            <div class="profile-info">
-                                <h3 id="profileUsername">Player</h3>
-                                <span class="profile-email" id="profileEmail">email@example.com</span>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="label">Update Username</label>
-                            <div class="input-row">
-                                <input type="text" id="usernameInput" placeholder="Enter username" class="form-input">
-                                <button class="btn btn-primary" id="updateProfileBtn"
-                                    style="padding: 0.6rem;">Save</button>
-                            </div>
-                        </div>
-
-                        <button class="btn btn-secondary" id="logoutBtn"
-                            style="margin-top: 1rem; width: 100%; border-color: var(--error); color: var(--error);">Log
-                            Out</button>
-                    </div>
-                </div>
+            <div class="auth-actions">
+              <button class="btn btn-primary" id="loginBtn">Log In</button>
+              <button class="btn btn-secondary" id="signupBtn">Sign Up</button>
             </div>
-        </div>
+            <div id="authMessage" class="auth-message"></div>
+          </div>
 
-        <!-- Shortcuts Modal -->
-        <div class="settings-modal-overlay" id="shortcutsModalOverlay">
-            <div class="settings-modal">
-                <div class="settings-header">
-                    <h2>Shortcuts</h2>
-                    <button class="close-btn" id="closeShortcutsBtn">×</button>
-                </div>
-                <div class="shortcuts-list">
-                    <div class="shortcut-row">
-                        <span class="key-badge">0-9</span>
-                        <span>Type Numbers</span>
-                    </div>
-                    <div class="shortcut-row">
-                        <span class="key-badge">Enter</span>
-                        <span>Start / Continue</span>
-                    </div>
-                    <div class="shortcut-row">
-                        <span class="key-badge">Space</span>
-                        <span>Start / Continue</span>
-                    </div>
-                    <div class="shortcut-row">
-                        <span class="key-badge">⌫</span>
-                        <span>Delete Digit</span>
-                    </div>
-                    <div class="shortcut-row">
-                        <span class="key-badge">R</span>
-                        <span>🔍 Reveal Number</span>
-                    </div>
-                    <div class="shortcut-row">
-                        <span class="key-badge">F</span>
-                        <span>⏱️ Freeze Time</span>
-                    </div>
-                    <div class="shortcut-row">
-                        <span class="key-badge">Esc</span>
-                        <span>Menu / Close</span>
-                    </div>
-                </div>
+          <div id="profileSection" style="display: none;">
+            <div class="profile-header">
+              <div class="avatar">👤</div>
+              <div class="profile-info">
+                <h3 id="profileUsername">Player</h3>
+                <span class="profile-email" id="profileEmail">email@example.com</span>
+              </div>
             </div>
-        </div>
 
-        <!-- Settings Modal -->
-        <div class="settings-modal-overlay" id="settingsModalOverlay">
-            <div class="settings-modal">
-                <div class="settings-header">
-                    <h2>Settings</h2>
-                    <button class="close-btn" id="closeSettingsBtn">×</button>
-                </div>
-
-                <div class="settings-section">
-                    <h3>Appearance</h3>
-                    <div class="theme-switcher">
-                        <button class="theme-option active" data-theme="dark">
-                            <span>🌙</span> Dark
-                        </button>
-                        <button class="theme-option" data-theme="light">
-                            <span>☀️</span> Light
-                        </button>
-                    </div>
-                </div>
-
-                <div class="settings-section">
-                    <h3>Gameplay</h3>
-                    <div class="settings-row">
-                        <div>
-                            <div class="label">Real-time feedback</div>
-                            <div class="sublabel">Show correct digits green as you type</div>
-                        </div>
-                        <div class="toggle" id="realtimeToggle"></div>
-                    </div>
-                    <div class="settings-row">
-                        <div>
-                            <div class="label">Keep correct digits</div>
-                            <div class="sublabel">Only retype wrong digits on retry</div>
-                        </div>
-                        <div class="toggle" id="keepCorrectToggle"></div>
-                    </div>
-                </div>
+            <div class="form-group">
+              <label class="label">Update Username</label>
+              <div class="input-row">
+                <input type="text" id="usernameInput" placeholder="Enter username" class="form-input">
+                <button class="btn btn-primary" id="updateProfileBtn" style="padding: 0.6rem;">Save</button>
+              </div>
             </div>
-        </div>
 
-        <div class="progress-section">
-            <div class="level-info">
-                <div class="level-badge" id="levelBadge">Level 1</div>
-                <div class="level-details"><span id="roundNum">1</span>/10 • <span id="digitCount">1</span>d • <span
-                        id="timeCount">1</span>s</div>
-            </div>
-            <div class="round-dots" id="roundDots"></div>
+            <button class="btn btn-secondary" id="logoutBtn"
+              style="margin-top: 1rem; width: 100%; border-color: var(--error); color: var(--error);">Log
+              Out</button>
+          </div>
         </div>
-
-        <div class="display-area" id="displayArea">
-            <div class="new-best" id="newBestIndicator">⭐ New Best!</div>
-            <div class="timer-display" id="timerDisplay"></div>
-            <div class="number-display" id="display"><span class="digit ready">•</span><span
-                    class="digit ready">•</span><span class="digit ready">•</span></div>
-            <div class="instruction" id="instruction">Press Start to begin</div>
-            <div class="reveal-hint" id="revealHint">🔍 Tap to reveal</div>
-            <div class="timer-bar" id="timerBar" style="width: 0%"></div>
-        </div>
-
-        <div class="keypad dimmed" id="keypad">
-            <button class="key" data-num="1">1</button>
-            <button class="key" data-num="2">2</button>
-            <button class="key" data-num="3">3</button>
-            <button class="key" data-num="4">4</button>
-            <button class="key" data-num="5">5</button>
-            <button class="key" data-num="6">6</button>
-            <button class="key" data-num="7">7</button>
-            <button class="key" data-num="8">8</button>
-            <button class="key" data-num="9">9</button>
-            <button class="key backspace" data-num="back">⌫</button>
-            <button class="key" data-num="0">0</button>
-            <button class="key backspace" data-num="back">⌫</button>
-        </div>
-
-        <div class="actions">
-            <button class="btn btn-primary" id="startBtn">Start</button>
-            <button class="btn btn-secondary" id="menuBtn">Menu</button>
-        </div>
+      </div>
     </div>
 
-    <!-- Tutorial Overlay -->
-    <div class="tutorial-overlay" id="tutorialOverlay">
-        <div class="tutorial-slide active" data-step="1">
-            <div class="tutorial-icon">🧠</div>
-            <h2 class="tutorial-title">Welcome to Memory Flash</h2>
-            <p class="tutorial-text">Train your brain with high-speed number recall. Memorize instantly, type fast.</p>
+    <!-- Shortcuts Modal -->
+    <div class="settings-modal-overlay" id="shortcutsModalOverlay">
+      <div class="settings-modal">
+        <div class="settings-header">
+          <h2>Shortcuts</h2>
+          <button class="close-btn" id="closeShortcutsBtn">×</button>
         </div>
-        <div class="tutorial-slide" data-step="2">
-            <div class="tutorial-icon">⚡</div>
-            <h2 class="tutorial-title">How It Works</h2>
-            <p class="tutorial-text">A number appears briefly. Memorize it before it vanishes. Type it in to survive.
-            </p>
+        <div class="shortcuts-list">
+          <div class="shortcut-row">
+            <span class="key-badge">0-9</span>
+            <span>Type Numbers</span>
+          </div>
+          <div class="shortcut-row">
+            <span class="key-badge">Enter</span>
+            <span>Start / Continue</span>
+          </div>
+          <div class="shortcut-row">
+            <span class="key-badge">Space</span>
+            <span>Start / Continue</span>
+          </div>
+          <div class="shortcut-row">
+            <span class="key-badge">⌫</span>
+            <span>Delete Digit</span>
+          </div>
+          <div class="shortcut-row">
+            <span class="key-badge">R</span>
+            <span>🔍 Reveal Number</span>
+          </div>
+          <div class="shortcut-row">
+            <span class="key-badge">F</span>
+            <span>⏱️ Freeze Time</span>
+          </div>
+          <div class="shortcut-row">
+            <span class="key-badge">Esc</span>
+            <span>Menu / Close</span>
+          </div>
         </div>
-        <div class="tutorial-slide" data-step="3">
-            <div class="tutorial-icon">📈</div>
-            <h2 class="tutorial-title">Progression</h2>
-            <p class="tutorial-text"><strong>Level 1:</strong> 1 digit in 1 second.<br><strong>Level 10:</strong> 10
-                digits in 10 seconds.<br>Then the time gets shorter!</p>
-        </div>
-        <div class="tutorial-slide" data-step="4">
-            <div class="tutorial-icon">🔋</div>
-            <h2 class="tutorial-title">Power-Ups</h2>
-            <p class="tutorial-text"><strong>🔍 Reveal:</strong> Peek at the number again.<br><strong>⏱️
-                    Freeze:</strong> Get +2s on the next round.<br>Use them wisely!</p>
-        </div>
-        <div class="tutorial-slide" data-step="5">
-            <div class="tutorial-icon">🚀</div>
-            <h2 class="tutorial-title">Ready?</h2>
-            <p class="tutorial-text">Tap anywhere to start the game.</p>
-        </div>
-
-        <div class="tutorial-dots" id="tutorialDots">
-            <div class="tutorial-dot active"></div>
-            <div class="tutorial-dot"></div>
-            <div class="tutorial-dot"></div>
-            <div class="tutorial-dot"></div>
-            <div class="tutorial-dot"></div>
-        </div>
-
-        <button class="btn btn-primary" id="tutorialNextBtn" style="width: 100%; max-width: 200px;">Next</button>
+      </div>
     </div>
 
-    <!-- Level Up Toast -->
-    <div class="level-toast" id="levelToast">
-        Level <span class="toast-level" id="toastLevel">2</span> 🎯
-    </div>
-
-    <!-- Level Picker -->
-    <div class="level-picker-overlay" id="levelPickerOverlay">
-        <div class="level-picker">
-            <h3>Select Starting Level</h3>
-            <div class="level-grid" id="levelGrid"></div>
+    <!-- Settings Modal -->
+    <div class="settings-modal-overlay" id="settingsModalOverlay">
+      <div class="settings-modal settings-panel">
+        <div class="settings-header">
+          <h2>⚙️ Settings</h2>
+          <button class="close-btn" id="closeSettingsBtn" aria-label="Close settings">×</button>
         </div>
-    </div>
 
-    <!-- Modal -->
-    <div class="modal-overlay" id="modal">
-        <div class="modal">
-            <h2 id="modalTitle" class="fail">Game Over</h2>
-            <div class="subtitle" id="modalSubtitle">You reached</div>
-            <div class="final-level" id="finalLevel">1</div>
-            <div class="best-label" id="bestLabel" style="display: none;">🏆 New Best!</div>
-            <div class="stats-grid">
-                <div class="stat-box">
-                    <div class="stat-label">Digits</div>
-                    <div class="stat-value" id="statDigits">1</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-label">Time</div>
-                    <div class="stat-value" id="statTime">1s</div>
-                </div>
+        <div class="settings-body">
+          <!-- Appearance -->
+          <div class="settings-section">
+            <div class="settings-section-title">🎨 Appearance</div>
+            <div class="theme-switcher">
+              <button class="theme-option active" data-theme="dark">
+                <span class="theme-icon">🌙</span> Dark
+              </button>
+              <button class="theme-option" data-theme="light">
+                <span class="theme-icon">☀️</span> Light
+              </button>
             </div>
-            <button class="btn btn-primary" id="retryBtn">Try Again</button>
-            <button class="btn btn-secondary" id="modalMenuBtn">Main Menu</button>
+          </div>
+
+          <!-- Gameplay -->
+          <div class="settings-section">
+            <div class="settings-section-title">🎮 Gameplay</div>
+            <div class="settings-row">
+              <div>
+                <div class="label">Real-time feedback</div>
+                <div class="sublabel">Show correct digits green as you type</div>
+              </div>
+              <div class="toggle" id="realtimeToggle" role="switch" aria-checked="false" tabindex="0"></div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="label">Keep correct digits</div>
+                <div class="sublabel">Only retype wrong digits on retry</div>
+              </div>
+              <div class="toggle" id="keepCorrectToggle" role="switch" aria-checked="false" tabindex="0"></div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="label">Show timer</div>
+                <div class="sublabel">Display countdown during memorization</div>
+              </div>
+              <div class="toggle" id="showTimerToggle" role="switch" aria-checked="true" tabindex="0"></div>
+            </div>
+          </div>
+
+          <!-- Sound -->
+          <div class="settings-section">
+            <div class="settings-section-title">🔊 Sound</div>
+            <div class="settings-row">
+              <div>
+                <div class="label">Sound effects</div>
+                <div class="sublabel">Play sounds on correct/wrong answers</div>
+              </div>
+              <div class="toggle" id="soundToggle" role="switch" aria-checked="true" tabindex="0"></div>
+            </div>
+          </div>
+
+          <!-- Data -->
+          <div class="settings-section">
+            <div class="settings-section-title">🗃️ Data</div>
+            <div class="settings-row">
+              <div>
+                <div class="label">Reset best level</div>
+                <div class="sublabel" id="bestLevelDisplay">Level 0</div>
+              </div>
+              <button class="settings-action-btn danger" id="resetDataBtn">Reset</button>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="label">Reset all settings</div>
+                <div class="sublabel">Restore defaults (keeps account)</div>
+              </div>
+              <button class="settings-action-btn" id="resetSettingsBtn">Reset</button>
+            </div>
+          </div>
+
+          <!-- About -->
+          <div class="settings-section">
+            <div class="settings-about">
+              <div class="about-info">
+                <span class="about-name">Memory Flash</span>
+                <span class="about-version">v2.0</span>
+              </div>
+              <div class="about-tagline">Speed memory training for your brain 🧠</div>
+            </div>
+          </div>
         </div>
+      </div>
     </div>
 
-    <!-- App JS (order matters: config → state → supabase → ui → game → modals → tutorial → main) -->
-    <script src="js/config.js"></script>
-    <script src="js/state.js"></script>
-    <script src="js/supabase.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/game.js"></script>
-    <script src="js/modals.js"></script>
-    <script src="js/tutorial.js"></script>
-    <script src="js/main.js"></script>
+    <div class="progress-section">
+      <div class="level-info">
+        <div class="level-badge" id="levelBadge">Level 1</div>
+        <div class="level-details"><span id="roundNum">1</span>/10 • <span id="digitCount">1</span>d • <span
+            id="timeCount">1</span>s</div>
+      </div>
+      <div class="round-dots" id="roundDots"></div>
+    </div>
+
+    <div class="display-area" id="displayArea">
+      <div class="new-best" id="newBestIndicator">⭐ New Best!</div>
+      <div class="timer-display" id="timerDisplay"></div>
+      <div class="number-display" id="display"><span class="digit ready">•</span><span class="digit ready">•</span><span
+          class="digit ready">•</span></div>
+      <div class="instruction" id="instruction">Press Start to begin</div>
+      <div class="reveal-hint" id="revealHint">🔍 Tap to reveal</div>
+      <div class="timer-bar" id="timerBar" style="width: 0%"></div>
+    </div>
+
+    <div class="keypad dimmed" id="keypad">
+      <button class="key" data-num="1">1</button>
+      <button class="key" data-num="2">2</button>
+      <button class="key" data-num="3">3</button>
+      <button class="key" data-num="4">4</button>
+      <button class="key" data-num="5">5</button>
+      <button class="key" data-num="6">6</button>
+      <button class="key" data-num="7">7</button>
+      <button class="key" data-num="8">8</button>
+      <button class="key" data-num="9">9</button>
+      <button class="key backspace" data-num="back">⌫</button>
+      <button class="key" data-num="0">0</button>
+      <button class="key backspace" data-num="back">⌫</button>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="startBtn">Start</button>
+      <button class="btn btn-secondary" id="menuBtn">Menu</button>
+    </div>
+  </div>
+
+  <!-- Tutorial Overlay -->
+  <div class="tutorial-overlay" id="tutorialOverlay">
+    <div class="tutorial-slide active" data-step="1">
+      <div class="tutorial-icon">🧠</div>
+      <h2 class="tutorial-title">Welcome to Memory Flash</h2>
+      <p class="tutorial-text">Train your brain with high-speed number recall. Memorize instantly, type fast.</p>
+    </div>
+    <div class="tutorial-slide" data-step="2">
+      <div class="tutorial-icon">⚡</div>
+      <h2 class="tutorial-title">How It Works</h2>
+      <p class="tutorial-text">A number appears briefly. Memorize it before it vanishes. Type it in to survive.
+      </p>
+    </div>
+    <div class="tutorial-slide" data-step="3">
+      <div class="tutorial-icon">📈</div>
+      <h2 class="tutorial-title">Progression</h2>
+      <p class="tutorial-text"><strong>Level 1:</strong> 1 digit in 1 second.<br><strong>Level 10:</strong> 10
+        digits in 10 seconds.<br>Then the time gets shorter!</p>
+    </div>
+    <div class="tutorial-slide" data-step="4">
+      <div class="tutorial-icon">🔋</div>
+      <h2 class="tutorial-title">Power-Ups</h2>
+      <p class="tutorial-text"><strong>🔍 Reveal:</strong> Peek at the number again.<br><strong>⏱️
+          Freeze:</strong> Get +2s on the next round.<br>Use them wisely!</p>
+    </div>
+    <div class="tutorial-slide" data-step="5">
+      <div class="tutorial-icon">🚀</div>
+      <h2 class="tutorial-title">Ready?</h2>
+      <p class="tutorial-text">Tap anywhere to start the game.</p>
+    </div>
+
+    <div class="tutorial-dots" id="tutorialDots">
+      <div class="tutorial-dot active"></div>
+      <div class="tutorial-dot"></div>
+      <div class="tutorial-dot"></div>
+      <div class="tutorial-dot"></div>
+      <div class="tutorial-dot"></div>
+    </div>
+
+    <button class="btn btn-primary" id="tutorialNextBtn" style="width: 100%; max-width: 200px;">Next</button>
+  </div>
+
+  <!-- Level Up Toast -->
+  <div class="level-toast" id="levelToast">
+    Level <span class="toast-level" id="toastLevel">2</span> 🎯
+  </div>
+
+  <!-- Level Picker -->
+  <div class="level-picker-overlay" id="levelPickerOverlay">
+    <div class="level-picker">
+      <h3>Select Starting Level</h3>
+      <div class="level-grid" id="levelGrid"></div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <h2 id="modalTitle" class="fail">Game Over</h2>
+      <div class="subtitle" id="modalSubtitle">You reached</div>
+      <div class="final-level" id="finalLevel">1</div>
+      <div class="best-label" id="bestLabel" style="display: none;">🏆 New Best!</div>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-label">Digits</div>
+          <div class="stat-value" id="statDigits">1</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Time</div>
+          <div class="stat-value" id="statTime">1s</div>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="retryBtn">Try Again</button>
+      <button class="btn btn-secondary" id="modalMenuBtn">Main Menu</button>
+    </div>
+  </div>
+
+  <!-- App JS (order matters: config → state → supabase → ui → game → modals → tutorial → main) -->
+  <script src="js/config.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/modals.js"></script>
+  <script src="js/tutorial.js"></script>
+  <script src="js/main.js"></script>
 </body>
 
 </html>

@@ -118,17 +118,107 @@ window.MemoryFlash = window.MemoryFlash || {};
             btn.addEventListener('click', () => MF.setTheme(btn.dataset.theme));
         });
 
-        // Toggles
-        MF.DOM.realtimeToggle.addEventListener('click', () => {
-            S.realtimeFeedback = !S.realtimeFeedback;
-            MF.DOM.realtimeToggle.classList.toggle('active', S.realtimeFeedback);
-            localStorage.setItem('memoryFlashRealtime', S.realtimeFeedback.toString());
+        // ---- Generic toggle helper ----
+        function bindToggle(el, stateKey, storageKey) {
+            const handler = () => {
+                S[stateKey] = !S[stateKey];
+                el.classList.toggle('active', S[stateKey]);
+                el.setAttribute('aria-checked', S[stateKey]);
+                localStorage.setItem(storageKey, S[stateKey].toString());
+                MF.playToggleSound();
+            };
+            el.addEventListener('click', handler);
+            el.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handler(); }
+            });
+        }
+
+        bindToggle(MF.DOM.realtimeToggle, 'realtimeFeedback', 'memoryFlashRealtime');
+        bindToggle(MF.DOM.keepCorrectToggle, 'keepCorrectDigits', 'memoryFlashKeepCorrect');
+        bindToggle(MF.DOM.showTimerToggle, 'showTimer', 'memoryFlashShowTimer');
+        bindToggle(MF.DOM.soundToggle, 'soundEnabled', 'memoryFlashSound');
+
+        // ---- Reset buttons ----
+        MF.DOM.resetDataBtn.addEventListener('click', () => {
+            if (!confirm('Reset your best level to 0? This cannot be undone.')) return;
+            S.bestLevel = 0;
+            localStorage.setItem('memoryFlashBest', '0');
+            MF.DOM.bestLevelDisplay.textContent = 'Level 0';
+            MF.DOM.newBestIndicator.classList.remove('visible');
+            S.isNewBest = false;
         });
 
-        MF.DOM.keepCorrectToggle.addEventListener('click', () => {
-            S.keepCorrectDigits = !S.keepCorrectDigits;
-            MF.DOM.keepCorrectToggle.classList.toggle('active', S.keepCorrectDigits);
-            localStorage.setItem('memoryFlashKeepCorrect', S.keepCorrectDigits.toString());
+        MF.DOM.resetSettingsBtn.addEventListener('click', () => {
+            if (!confirm('Reset all settings to defaults? Your account and best level are kept.')) return;
+
+            // Restore defaults
+            S.realtimeFeedback = false;
+            S.keepCorrectDigits = false;
+            S.showTimer = true;
+            S.soundEnabled = true;
+            S.currentTheme = 'dark';
+
+            // Persist
+            localStorage.setItem('memoryFlashRealtime', 'false');
+            localStorage.setItem('memoryFlashKeepCorrect', 'false');
+            localStorage.setItem('memoryFlashShowTimer', 'true');
+            localStorage.setItem('memoryFlashSound', 'true');
+            localStorage.setItem('memoryFlashTheme', 'dark');
+
+            // Update UI
+            MF.DOM.realtimeToggle.classList.remove('active');
+            MF.DOM.keepCorrectToggle.classList.remove('active');
+            MF.DOM.showTimerToggle.classList.add('active');
+            MF.DOM.soundToggle.classList.add('active');
+
+            MF.DOM.realtimeToggle.setAttribute('aria-checked', 'false');
+            MF.DOM.keepCorrectToggle.setAttribute('aria-checked', 'false');
+            MF.DOM.showTimerToggle.setAttribute('aria-checked', 'true');
+            MF.DOM.soundToggle.setAttribute('aria-checked', 'true');
+
+            MF.setTheme('dark');
         });
+    };
+
+    // ---- Sound Effects (Web Audio API) ----
+    let audioCtx = null;
+    function getAudioCtx() {
+        if (!audioCtx) {
+            try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+            catch (e) { /* silent fallback */ }
+        }
+        return audioCtx;
+    }
+
+    function playTone(freq, duration, type) {
+        if (!S.soundEnabled) return;
+        const ctx = getAudioCtx();
+        if (!ctx) return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type || 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + duration);
+    }
+
+    /** Play a short click for toggle interactions */
+    MF.playToggleSound = function () { playTone(800, 0.08, 'sine'); };
+
+    /** Play correct answer sound */
+    MF.playCorrectSound = function () {
+        playTone(523, 0.12, 'sine');
+        setTimeout(() => playTone(659, 0.12, 'sine'), 80);
+        setTimeout(() => playTone(784, 0.15, 'sine'), 160);
+    };
+
+    /** Play wrong answer sound */
+    MF.playWrongSound = function () {
+        playTone(330, 0.2, 'sawtooth');
+        setTimeout(() => playTone(262, 0.25, 'sawtooth'), 120);
     };
 })(window.MemoryFlash);

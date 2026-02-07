@@ -330,19 +330,52 @@
     color: var(--text-primary);
 }
 
-.settings-section {
-    margin-bottom: 1.5rem;
+/* ---- Settings Panel (expanded) ---- */
+.settings-panel {
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
 }
 
-.settings-section h3 {
-    font-size: 0.75rem;
+.settings-body {
+    overflow-y: auto;
+    flex: 1;
+    padding-right: 0.25rem;
+    scrollbar-width: thin;
+    scrollbar-color: var(--bg-key-hover) transparent;
+}
+
+.settings-body::-webkit-scrollbar {
+    width: 4px;
+}
+
+.settings-body::-webkit-scrollbar-thumb {
+    background: var(--bg-key-hover);
+    border-radius: 2px;
+}
+
+.settings-section {
+    margin-bottom: 1.25rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.settings-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.settings-section-title {
+    font-size: 0.8rem;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
     color: var(--text-muted);
     margin-bottom: 0.75rem;
+    font-weight: 600;
 }
 
-/* Settings Button */
+/* Settings Button (top bar) */
 .settings-btn {
     position: absolute;
     top: 0.5rem;
@@ -372,27 +405,32 @@
     flex: 1;
     border: none;
     background: none;
-    padding: 0.5rem;
-    border-radius: 0.5rem;
+    padding: 0.6rem;
+    border-radius: 0.6rem;
     color: var(--text-secondary);
-    font-size: 0.9rem;
-    font-weight: 500;
+    font-size: 0.85rem;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.25s ease;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.4rem;
+    gap: 0.5rem;
+}
+
+.theme-icon {
+    font-size: 1.1rem;
 }
 
 .theme-option:hover {
     color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.03);
 }
 
 .theme-option.active {
     background: var(--bg-card);
     color: var(--accent);
-    box-shadow: 0 2px 8px var(--shadow-color);
+    box-shadow: 0 2px 12px var(--shadow-color);
 }
 
 /* ---- Settings Rows & Toggle ---- */
@@ -400,36 +438,50 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.75rem 0;
-    border-bottom: 1px solid var(--border-color);
+    padding: 0.6rem 0;
+    gap: 0.75rem;
 }
 
-.settings-row:last-child {
-    border-bottom: none;
+.settings-row+.settings-row {
+    border-top: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 .settings-row .label {
     font-size: 0.85rem;
     color: var(--text-primary);
+    font-weight: 500;
 }
 
 .settings-row .sublabel {
     font-size: 0.7rem;
     color: var(--text-muted);
+    margin-top: 0.15rem;
 }
 
 .toggle {
     position: relative;
-    width: 44px;
-    height: 24px;
+    width: 48px;
+    height: 26px;
     background: var(--bg-key);
-    border-radius: 12px;
+    border-radius: 13px;
     cursor: pointer;
-    transition: background 0.2s ease;
+    transition: background 0.25s ease;
+    flex-shrink: 0;
+    border: 1px solid var(--border-color);
+}
+
+.toggle:hover {
+    border-color: var(--text-muted);
+}
+
+.toggle:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 .toggle.active {
     background: var(--accent);
+    border-color: var(--accent);
 }
 
 .toggle::after {
@@ -441,11 +493,81 @@
     height: 20px;
     background: white;
     border-radius: 50%;
-    transition: transform 0.2s ease;
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .toggle.active::after {
-    transform: translateX(20px);
+    transform: translateX(22px);
+}
+
+/* ---- Settings Action Buttons ---- */
+.settings-action-btn {
+    padding: 0.4rem 0.9rem;
+    border: 1px solid var(--border-color);
+    background: var(--bg-key);
+    color: var(--text-secondary);
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.settings-action-btn:hover {
+    background: var(--bg-key-hover);
+    color: var(--text-primary);
+    border-color: var(--text-muted);
+}
+
+.settings-action-btn.danger {
+    border-color: rgba(239, 68, 68, 0.3);
+    color: var(--error);
+}
+
+.settings-action-btn.danger:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: var(--error);
+}
+
+/* ---- Settings About ---- */
+.settings-about {
+    text-align: center;
+    padding-top: 0.5rem;
+}
+
+.about-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.about-name {
+    font-weight: 700;
+    font-size: 0.9rem;
+    background: linear-gradient(135deg, var(--accent), #a855f7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.about-version {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    background: var(--bg-key);
+    padding: 0.1rem 0.4rem;
+    border-radius: 0.3rem;
+}
+
+.about-tagline {
+    font-size: 0.75rem;
+    color: var(--text-muted);
 }
 
 /* ---- Level Picker ---- */

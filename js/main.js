@@ -58,6 +58,13 @@ window.MemoryFlash = window.MemoryFlash || {};
         tutorialDots: document.getElementById('tutorialDots'),
         powerUps: document.getElementById('powerUps'),
 
+        // Settings (new)
+        showTimerToggle: document.getElementById('showTimerToggle'),
+        soundToggle: document.getElementById('soundToggle'),
+        resetDataBtn: document.getElementById('resetDataBtn'),
+        resetSettingsBtn: document.getElementById('resetSettingsBtn'),
+        bestLevelDisplay: document.getElementById('bestLevelDisplay'),
+
         // Auth
         authSection: document.getElementById('authSection'),
         profileSection: document.getElementById('profileSection'),
@@ -92,6 +99,15 @@ window.MemoryFlash = window.MemoryFlash || {};
         // Toggle initial states
         MF.DOM.realtimeToggle.classList.toggle('active', S.realtimeFeedback);
         MF.DOM.keepCorrectToggle.classList.toggle('active', S.keepCorrectDigits);
+        MF.DOM.showTimerToggle.classList.toggle('active', S.showTimer);
+        MF.DOM.soundToggle.classList.toggle('active', S.soundEnabled);
+        MF.DOM.bestLevelDisplay.textContent = 'Level ' + S.bestLevel;
+
+        // ARIA sync
+        MF.DOM.realtimeToggle.setAttribute('aria-checked', S.realtimeFeedback);
+        MF.DOM.keepCorrectToggle.setAttribute('aria-checked', S.keepCorrectDigits);
+        MF.DOM.showTimerToggle.setAttribute('aria-checked', S.showTimer);
+        MF.DOM.soundToggle.setAttribute('aria-checked', S.soundEnabled);
 
         // Init modals & tutorial
         MF.initModals();

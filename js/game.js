@@ -104,13 +104,14 @@ window.MemoryFlash = window.MemoryFlash || {};
         MF.updatePowerUps();
 
         let remaining = displaySecs;
-        MF.DOM.timerDisplay.textContent = remaining + 's';
+        MF.DOM.timerDisplay.textContent = S.showTimer ? remaining + 's' : '';
         MF.DOM.timerDisplay.className = 'timer-display';
+        MF.DOM.timerDisplay.style.visibility = S.showTimer ? 'visible' : 'hidden';
 
         S.countdownId = setInterval(() => {
             remaining--;
             if (remaining > 0) {
-                MF.DOM.timerDisplay.textContent = remaining + 's';
+                if (S.showTimer) MF.DOM.timerDisplay.textContent = remaining + 's';
                 if (remaining <= 2) MF.DOM.timerDisplay.className = 'timer-display critical';
                 else if (remaining <= 3) MF.DOM.timerDisplay.className = 'timer-display warning';
             }
@@ -210,10 +211,12 @@ window.MemoryFlash = window.MemoryFlash || {};
                 if (isCorrect) {
                     MF.renderDisplay(S.userInput, ['correct']);
                     MF.flashCorrect();
+                    MF.playCorrectSound();
                     MF.DOM.instruction.textContent = '✓';
                 } else {
                     MF.renderPartialCredit();
                     MF.flashWrong();
+                    MF.playWrongSound();
                     MF.DOM.instruction.textContent = 'Moving on...';
                 }
 
@@ -241,6 +244,7 @@ window.MemoryFlash = window.MemoryFlash || {};
             if (isCorrect) {
                 MF.renderDisplay(fullInput, ['correct']);
                 MF.flashCorrect();
+                MF.playCorrectSound();
                 MF.DOM.instruction.textContent = '✓';
                 S.perfectStreak++;
                 S.lockedDigits = [];
@@ -280,6 +284,7 @@ window.MemoryFlash = window.MemoryFlash || {};
 
                 MF.renderPartialCredit();
                 MF.flashWrong();
+                MF.playWrongSound();
                 MF.DOM.instruction.textContent = 'Try again';
                 S.perfectStreak = 0;
                 S.lives--;

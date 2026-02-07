@@ -57,6 +57,8 @@ window.MemoryFlash = window.MemoryFlash || {};
         // User preferences (persisted)
         realtimeFeedback: store('memoryFlashRealtime', 'false') === 'true',
         keepCorrectDigits: store('memoryFlashKeepCorrect', 'false') === 'true',
+        showTimer: store('memoryFlashShowTimer', 'true') !== 'false',
+        soundEnabled: store('memoryFlashSound', 'true') !== 'false',
         currentTheme: store('memoryFlashTheme', 'dark'),
         hasSeenTutorial: store('memoryFlashTutorialSeen', 'false') === 'true',
         tutorialStep: 1,
