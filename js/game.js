@@ -9,12 +9,12 @@ window.MemoryFlash = window.MemoryFlash || {};
     const S = MF.state;
 
     /** Clear all active game timers */
-    function clearTimers() {
+    MF.clearTimers = function () {
         clearTimeout(S.showTimeoutId);
         clearInterval(S.countdownId);
         S.showTimeoutId = null;
         S.countdownId = null;
-    }
+    };
 
     function generateNumber(digits) {
         let num = '';
@@ -402,7 +402,7 @@ window.MemoryFlash = window.MemoryFlash || {};
     };
 
     MF.resetToMenu = function () {
-        clearTimers();
+        MF.clearTimers();
         MF.DOM.modal.classList.remove('visible');
         MF.DOM.modeScreen.classList.remove('hidden');
         S.gameState = 'idle';

@@ -15,10 +15,26 @@ window.MemoryFlash = window.MemoryFlash || {};
             btn.className = 'level-option' + (i === S.startLevel ? ' selected' : '');
             btn.innerHTML = `${i}<span class="level-meta">${config.digits}d/${config.time}s</span>`;
             btn.addEventListener('click', () => {
+                // If switching mid-game, stop current round cleanly
+                if (S.gameState !== 'idle') {
+                    MF.clearTimers();
+                    S.gameState = 'idle';
+                    MF.DOM.timerDisplay.textContent = '';
+                    MF.DOM.timerBar.style.width = '0%';
+                    MF.DOM.keypad.classList.add('dimmed');
+                    MF.DOM.keypad.classList.remove('active');
+                    MF.DOM.startBtn.disabled = false;
+                    MF.DOM.startBtn.textContent = 'Start';
+                    MF.DOM.instruction.textContent = 'Press Start to begin';
+                }
                 S.startLevel = i;
                 S.level = S.startLevel;
                 S.round = 1;
+                S.userInput = '';
+                S.lockedDigits = [];
+                S.perfectStreak = 0;
                 MF.updateUI();
+                MF.renderReadyState();
                 MF.DOM.levelPickerOverlay.classList.remove('visible');
             });
             MF.DOM.levelGrid.appendChild(btn);
@@ -26,7 +42,6 @@ window.MemoryFlash = window.MemoryFlash || {};
     };
 
     MF.showLevelPicker = function () {
-        if (S.gameState !== 'idle') return;
         MF.buildLevelPicker();
         MF.DOM.levelPickerOverlay.classList.add('visible');
     };
