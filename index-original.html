@@ -1,0 +1,2758 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Memory Flash — Speed Memory Training</title>
+  <meta name="description" content="Train your memory with progressive number recall. How far can you go?">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :root {
+      /* Shared Colors */
+      --accent: #6366f1;
+      --accent-glow: rgba(99, 102, 241, 0.4);
+      --success: #10b981;
+      --success-glow: rgba(16, 185, 129, 0.5);
+      --error: #ef4444;
+      --error-glow: rgba(239, 68, 68, 0.5);
+      --warning: #f59e0b;
+    }
+
+    [data-theme="dark"] {
+      --bg-body: #0a0a0f;
+      --bg-card: #12121a;
+      --bg-key: #1a1a24;
+      --bg-key-hover: #252532;
+      --bg-key-active: #2d2d3d;
+      --bg-key-ready: #22222e;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --border-color: rgba(255, 255, 255, 0.1);
+      --shadow-color: rgba(0, 0, 0, 0.3);
+    }
+
+    [data-theme="light"] {
+      --bg-body: #f1f5f9;
+      --bg-card: #ffffff;
+      --bg-key: #e2e8f0;
+      --bg-key-hover: #cbd5e1;
+      --bg-key-active: #94a3b8;
+      --bg-key-ready: #f8fafc;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #94a3b8;
+      --border-color: rgba(0, 0, 0, 0.08);
+      --shadow-color: rgba(0, 0, 0, 0.05);
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-body);
+      color: var(--text-primary);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100dvh;
+      padding: 1rem;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 380px;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+    }
+
+    .title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Status Bar */
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0.75rem;
+      background: var(--bg-card);
+      border-radius: 0.75rem;
+      font-size: 0.8rem;
+      box-shadow: 0 4px 12px var(--shadow-color);
+    }
+
+    .lives {
+      display: flex;
+      gap: 0.25rem;
+    }
+
+    .heart {
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    .heart.empty {
+      opacity: 0.3;
+      filter: grayscale(1);
+    }
+
+    .heart.lost {
+      animation: heartBreak 0.5s ease forwards;
+    }
+
+    @keyframes heartBreak {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.3); }
+      100% { transform: scale(0.8); opacity: 0.3; filter: grayscale(1); }
+    }
+
+    .power-ups {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .power-up {
+      display: flex;
+      align-items: center;
+      gap: 0.2rem;
+      background: var(--bg-key);
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+
+    .power-up:hover:not(.disabled) {
+      background: var(--bg-key-hover);
+      border-color: var(--accent);
+    }
+
+    .power-up.disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .power-up.active {
+      border-color: var(--success);
+      box-shadow: 0 0 10px var(--success-glow);
+    }
+
+    .power-up .icon { font-size: 0.9rem; }
+    .power-up .count {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      font-size: 0.75rem;
+    }
+
+    /* Progress Section */
+    .progress-section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .level-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+    }
+
+    .level-badge {
+      background: linear-gradient(135deg, var(--accent), #7c3aed);
+      padding: 0.25rem 0.75rem;
+      border-radius: 1rem;
+      font-weight: 700;
+      font-size: 0.85rem;
+      transition: transform 0.3s ease;
+      cursor: pointer;
+      border: 2px solid transparent;
+    }
+
+    .level-badge:hover {
+      border-color: rgba(255, 255, 255, 0.3);
+      transform: scale(1.05);
+    }
+
+    .level-badge.pop {
+      animation: levelPop 0.4s ease;
+    }
+
+    @keyframes levelPop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.15); }
+      100% { transform: scale(1); }
+    }
+
+    .level-details {
+      color: var(--text-secondary);
+      font-size: 0.75rem;
+    }
+
+    .level-details span {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    /* Progress bar for levels */
+    .progress-bar-container {
+      background: var(--bg-key);
+      border-radius: 0.5rem;
+      height: 6px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), #a855f7);
+      border-radius: 0.5rem;
+      transition: width 0.3s ease;
+    }
+
+    /* Display Area */
+    .display-area {
+      background: var(--bg-card);
+      border-radius: 1rem;
+      padding: 1.5rem 1rem;
+      text-align: center;
+      min-height: 115px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      border: 1px solid var(--border-color);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 20px var(--shadow-color);
+    }
+
+    .display-area.can-reveal:hover {
+      border-color: var(--accent);
+    }
+
+    .display-area.flash-correct {
+      animation: flashCorrect 0.5s ease;
+    }
+
+    .display-area.flash-wrong {
+      animation: flashWrong 0.5s ease;
+    }
+
+    @keyframes flashCorrect {
+      0%, 100% { box-shadow: none; }
+      50% { box-shadow: inset 0 0 30px var(--success-glow), 0 0 20px var(--success-glow); }
+    }
+
+    @keyframes flashWrong {
+      0%, 100% { box-shadow: none; transform: translateX(0); }
+      20% { transform: translateX(-6px); box-shadow: inset 0 0 20px var(--error-glow); }
+      40% { transform: translateX(6px); }
+      60% { transform: translateX(-4px); }
+      80% { transform: translateX(4px); box-shadow: inset 0 0 20px var(--error-glow); }
+    }
+
+    .display-area .reveal-hint {
+      position: absolute;
+      bottom: 0.5rem;
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .display-area.can-reveal .reveal-hint {
+      opacity: 1;
+    }
+
+    .timer-display {
+      position: absolute;
+      top: 0.6rem;
+      right: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .timer-display.warning { color: var(--warning); }
+    .timer-display.critical { color: var(--error); animation: blink 0.5s ease infinite; }
+
+    @keyframes blink { 50% { opacity: 0.5; } }
+
+    .number-display {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 2.5rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      min-height: 3rem;
+      display: flex;
+      gap: 0.05em;
+      flex-wrap: wrap;
+      justify-content: center;
+      transition: transform 0.2s ease;
+    }
+
+    .number-display.correct-pop {
+      animation: correctPop 0.3s ease;
+    }
+
+    @keyframes correctPop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+      100% { transform: scale(1); }
+    }
+
+    .digit {
+      transition: all 0.2s ease;
+    }
+
+    .digit.correct {
+      color: var(--success);
+      text-shadow: 0 0 15px var(--success-glow);
+    }
+
+    .digit.wrong {
+      color: var(--error);
+      text-shadow: 0 0 15px var(--error-glow);
+    }
+
+    .digit.pending {
+      color: var(--text-muted);
+    }
+
+    .digit.showing {
+      color: var(--accent);
+      text-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    .digit.ready {
+      color: var(--text-muted);
+      animation: readyPulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes readyPulse {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 0.8; }
+    }
+
+    .instruction {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+    }
+
+    .new-best {
+      position: absolute;
+      top: 0.6rem;
+      left: 0.75rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--warning);
+      opacity: 0;
+      transform: translateY(-5px);
+      transition: all 0.3s ease;
+    }
+
+    .new-best.visible {
+      opacity: 1;
+      transform: translateY(0);
+      animation: bestGlow 1s ease infinite alternate;
+    }
+
+    @keyframes bestGlow {
+      from { text-shadow: 0 0 5px rgba(245, 158, 11, 0.3); }
+      to { text-shadow: 0 0 15px rgba(245, 158, 11, 0.6); }
+    }
+
+    .timer-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), #a855f7);
+      border-radius: 0 0 1rem 1rem;
+    }
+
+    /* Level Up Toast */
+    .level-toast {
+      position: fixed;
+      top: 1rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(-100px);
+      background: linear-gradient(135deg, var(--success), #059669);
+      color: white;
+      padding: 0.6rem 1.25rem;
+      border-radius: 2rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+      box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
+      z-index: 50;
+      opacity: 0;
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .level-toast.visible {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    .level-toast .toast-level {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Keypad */
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+      transition: opacity 0.3s ease;
+    }
+
+    .keypad.dimmed {
+      opacity: 0.5;
+    }
+
+    .keypad.active .key {
+      background: var(--bg-key-ready);
+      box-shadow: 0 2px 8px var(--shadow-color);
+    }
+
+    .key {
+      aspect-ratio: 1.4;
+      background: var(--bg-key);
+      border: 1px solid var(--border-color);
+      border-radius: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+
+    .key:hover:not(:disabled) {
+      background: var(--bg-key-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px var(--shadow-color);
+    }
+
+    .key:active:not(:disabled) {
+      background: var(--bg-key-active);
+      transform: translateY(0);
+    }
+
+    .key.backspace {
+      font-size: 1.25rem;
+    }
+
+    .key:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Level Selector Modal */
+    .level-picker-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+      z-index: 150;
+    }
+
+    .level-picker-overlay.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .level-picker {
+      background: var(--bg-card);
+      border-radius: 1.25rem;
+      padding: 1.25rem;
+      max-width: 320px;
+      width: 90%;
+      max-height: 70vh;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transform: scale(0.9);
+      transition: transform 0.3s ease;
+    }
+
+    .level-picker-overlay.visible .level-picker {
+      transform: scale(1);
+    }
+
+    .level-picker h3 {
+      text-align: center;
+      margin-bottom: 1rem;
+      font-size: 1.1rem;
+      color: var(--text-primary);
+    }
+
+    .level-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.5rem;
+      max-height: 50vh;
+      overflow-y: auto;
+    }
+
+    .level-option {
+      aspect-ratio: 1;
+      background: var(--bg-key);
+      border: 2px solid transparent;
+      border-radius: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.15rem;
+    }
+
+    .level-option:hover {
+      background: var(--bg-key-hover);
+      border-color: var(--accent);
+    }
+
+    .level-option.selected {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .level-option .level-meta {
+      font-size: 0.55rem;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    .level-option.selected .level-meta {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    /* Actions */
+    .actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 0.8rem;
+      border: none;
+      border-radius: 0.75rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #7c3aed);
+      color: white;
+    }
+
+    .btn-primary:hover { transform: translateY(-2px); }
+
+    .btn-secondary {
+      flex: 0.7;
+      padding: 0.7rem;
+      background: var(--bg-key);
+      color: var(--text-muted);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.8rem;
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-key-hover);
+      color: var(--text-secondary);
+    }
+
+    /* Mode Selection Screen */
+    .screen {
+      position: fixed;
+      inset: 0;
+      background: var(--bg-body); /* Ensure solid background */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      z-index: 200;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    .screen.hidden {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .screen-title {
+      font-size: 2rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.5rem;
+    }
+
+    .screen-subtitle {
+      color: var(--text-muted);
+      margin-bottom: 2rem;
+      text-align: center;
+      max-width: 300px;
+      line-height: 1.5;
+    }
+
+    .mode-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      width: 100%;
+      max-width: 320px;
+    }
+
+    .mode-card {
+      background: var(--bg-card);
+      border: 2px solid rgba(255, 255, 255, 0.05);
+      border-radius: 1rem;
+      padding: 1rem 1.25rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: left;
+    }
+
+    .mode-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .mode-card.chill { border-left: 4px solid var(--success); }
+    .mode-card.normal { border-left: 4px solid var(--accent); }
+    .mode-card.hardcore { border-left: 4px solid var(--error); }
+    .mode-card.zen { border-left: 4px solid #f59e0b; }
+
+    .mode-card h3 {
+      font-size: 1.1rem;
+      margin-bottom: 0.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .mode-card p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* Settings Modal */
+    .settings-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+      z-index: 200;
+    }
+
+    [data-theme="light"] .settings-modal-overlay {
+      background: rgba(255, 255, 255, 0.85);
+    }
+
+    .settings-modal-overlay.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .settings-modal {
+      background: var(--bg-card);
+      border-radius: 1.25rem;
+      padding: 1.5rem;
+      width: 90%;
+      max-width: 340px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 10px 40px var(--shadow-color);
+      transform: scale(0.9);
+      transition: transform 0.3s ease;
+    }
+
+    .settings-modal-overlay.visible .settings-modal {
+      transform: scale(1);
+    }
+
+    .settings-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .settings-header h2 {
+      font-size: 1.25rem;
+      margin: 0;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+    }
+
+    .close-btn:hover {
+      color: var(--text-primary);
+    }
+
+    .settings-section {
+      margin-bottom: 1.5rem;
+    }
+
+    .settings-section h3 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+    }
+
+    /* Theme Switcher */
+    .theme-switcher {
+      display: flex;
+      background: var(--bg-key);
+      padding: 0.25rem;
+      border-radius: 0.75rem;
+      gap: 0.25rem;
+    }
+
+    .theme-option {
+      flex: 1;
+      border: none;
+      background: none;
+      padding: 0.5rem;
+      border-radius: 0.5rem;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+    }
+
+    .theme-option:hover {
+      color: var(--text-primary);
+    }
+
+    .theme-option.active {
+      background: var(--bg-card);
+      color: var(--accent);
+      box-shadow: 0 2px 8px var(--shadow-color);
+    }
+
+    .settings-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .settings-row:last-child {
+      border-bottom: none;
+    }
+
+
+    .settings-row .label {
+      font-size: 0.85rem;
+      color: var(--text-primary);
+    }
+
+    .settings-row .sublabel {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    .toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      background: var(--bg-key);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .toggle.active {
+      background: var(--accent);
+    }
+
+    .toggle::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.2s ease;
+    }
+
+    .toggle.active::after {
+      transform: translateX(20px);
+    }
+
+    /* Settings Button */
+    .settings-btn {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      background: none;
+      border: none;
+      font-size: 1.25rem;
+      cursor: pointer;
+      opacity: 0.5;
+      transition: opacity 0.2s ease;
+    }
+
+    .settings-btn:hover {
+      opacity: 1;
+    }
+
+    /* Settings Panel - REMOVED (replaced by modal) */
+    /* Zen Mode Review */
+    .review-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.4rem 0.6rem;
+      background: var(--bg-key);
+      border-radius: 0.5rem;
+      margin-bottom: 0.3rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+    }
+
+    .review-item.correct {
+      border-left: 3px solid var(--success);
+    }
+
+    .review-item.wrong {
+      border-left: 3px solid var(--error);
+    }
+
+    .review-item .result-icon {
+      font-size: 0.9rem;
+    }
+
+    .review-list {
+      max-height: 200px;
+      overflow-y: auto;
+      margin-bottom: 1rem;
+    }
+
+    /* Tutorial Modal */
+    .tutorial-overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--bg-body);
+      z-index: 300;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none; /* Critical fix */
+      transition: all 0.3s ease;
+    }
+
+    .tutorial-overlay.visible {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .tutorial-slide {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      max-width: 320px;
+      animation: slideIn 0.4s ease;
+    }
+
+    .tutorial-slide.active {
+      display: flex;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .tutorial-icon {
+      font-size: 4rem;
+      margin-bottom: 1.5rem;
+      filter: drop-shadow(0 0 20px var(--accent-glow));
+    }
+
+    .tutorial-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 1rem;
+    }
+
+    .tutorial-text {
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin-bottom: 2rem;
+    }
+
+    .tutorial-dots {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .tutorial-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--bg-key);
+      transition: all 0.3s ease;
+    }
+
+    .tutorial-dot.active {
+      background: var(--accent);
+      transform: scale(1.3);
+    }
+
+    /* Round Progress Dots */
+    .round-dots {
+      display: flex;
+      gap: 0.3rem;
+      justify-content: center;
+      margin-top: 0.2rem;
+    }
+
+    .dot {
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 50%;
+      background: var(--bg-key);
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+    }
+
+    .dot.complete {
+      background: var(--success);
+      border-color: var(--success);
+    }
+
+    .dot.current {
+      background: var(--accent);
+      border-color: var(--accent);
+      transform: scale(1.3);
+    }
+
+    /* Leaderboard & Auth Styles */
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 1rem;
+    }
+
+    .tab-btn {
+      flex: 1;
+      background: none;
+      border: none;
+      padding: 0.8rem;
+      color: var(--text-secondary);
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .score-filters {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      justify-content: center;
+    }
+
+    .filter-btn {
+      background: var(--bg-key);
+      border: 1px solid var(--border-color);
+      padding: 0.3rem 0.8rem;
+      border-radius: 1rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .filter-btn.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .leaderboard-list {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .score-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.6rem;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.9rem;
+    }
+
+    .score-row:nth-child(1) { color: #fbbf24; font-weight: bold; } /* Gold */
+    .score-row:nth-child(2) { color: #94a3b8; font-weight: bold; } /* Silver */
+    .score-row:nth-child(3) { color: #b45309; font-weight: bold; } /* Bronze */
+
+    .score-rank { width: 1.5rem; color: var(--text-muted); }
+    .score-user { flex: 1; }
+    .score-val { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+
+    /* Auth Forms */
+    .form-group { margin-bottom: 1rem; }
+    .form-input {
+      width: 100%;
+      padding: 0.8rem;
+      background: var(--bg-key);
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+      color: var(--text-primary);
+      font-family: inherit;
+    }
+    .form-input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .auth-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    .auth-intro {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+    .auth-message {
+      margin-top: 1rem;
+      font-size: 0.85rem;
+      text-align: center;
+      min-height: 1.2rem;
+    }
+    .auth-message.error { color: var(--error); }
+    .auth-message.success { color: var(--success); }
+
+    .profile-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 1.5rem;
+    }
+    .avatar {
+      width: 3rem;
+      height: 3rem;
+      background: var(--bg-key);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+    .profile-info h3 { margin: 0; font-size: 1.1rem; }
+    .profile-email { font-size: 0.8rem; color: var(--text-muted); }
+    .input-row { display: flex; gap: 0.5rem; }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+      z-index: 100;
+    }
+
+    /* Light mode overlay adjustment */
+    [data-theme="light"] .modal-overlay,
+    [data-theme="light"] .level-picker-overlay {
+      background: rgba(255, 255, 255, 0.85);
+    }
+
+    .modal-overlay.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal {
+      background: var(--bg-card);
+      border-radius: 1.25rem;
+      padding: 1.5rem;
+      text-align: center;
+      max-width: 300px;
+      width: 90%;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transform: scale(0.9);
+      transition: transform 0.3s ease;
+    }
+
+    .modal-overlay.visible .modal {
+      transform: scale(1);
+    }
+
+    .modal h2 {
+      font-size: 1.3rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .modal h2.success { color: var(--success); }
+    .modal h2.fail { color: var(--error); }
+
+    .modal .subtitle {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+    }
+
+    .modal .final-level {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 3rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin: 0.5rem 0;
+    }
+
+    .modal .best-label {
+      color: var(--warning);
+      font-weight: 600;
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+    }
+
+    .modal .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .modal .stat-box {
+      background: var(--bg-key);
+      border-radius: 0.6rem;
+      padding: 0.6rem;
+    }
+
+    .modal .stat-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    .modal .stat-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .modal .btn { width: 100%; }
+    .modal .btn + .btn { margin-top: 0.4rem; }
+
+    /* Responsive */
+    @media (max-height: 650px) {
+      .container { gap: 0.6rem; }
+      .display-area { padding: 1rem 0.75rem; min-height: 95px; }
+      .number-display { font-size: 2rem; }
+      .key { font-size: 1.25rem; aspect-ratio: 1.5; }
+    }
+
+    /* Shortcuts List */
+    .shortcuts-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+
+    .shortcut-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    .key-badge {
+      background: var(--bg-key);
+      border: 1px solid var(--border-color);
+      padding: 0.2rem 0.6rem;
+      border-radius: 0.4rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      color: var(--text-primary);
+      min-width: 2.5rem;
+      text-align: center;
+      box-shadow: 0 2px 0 var(--border-color);
+    }
+  </style>
+</head>
+<body>
+  <!-- Mode Selection Screen -->
+  <div class="screen" id="modeScreen">
+    <h1 class="screen-title">Memory Flash</h1>
+    <p class="screen-subtitle">1 digit = 1 second<br>10 digits = 10 seconds<br>Then the real challenge begins...</p>
+    <div class="mode-cards">
+      <div class="mode-card chill" data-mode="chill">
+        <h3>🌴 Chill Mode</h3>
+        <p>5 lives • Extra time • More power-ups. Learn at your pace.</p>
+      </div>
+      <div class="mode-card zen" data-mode="zen">
+        <h3>🧘 Zen Mode</h3>
+        <p>No lives • No pressure • 10 rounds then review. Pure practice.</p>
+      </div>
+      <div class="mode-card normal" data-mode="normal">
+        <h3>⚡ Normal Mode</h3>
+        <p>3 lives • Standard timing • Earn power-ups. Balanced challenge.</p>
+      </div>
+      <div class="mode-card hardcore" data-mode="hardcore">
+        <h3>💀 Hardcore Mode</h3>
+        <p>1 life • No mercy • No power-ups. Pure memory.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Container -->
+  <div class="container">
+    <header class="header">
+      <h1 class="title">Memory Flash</h1>
+    </header>
+
+    <div class="status-bar">
+      <div class="lives" id="livesDisplay">
+        <span class="heart">❤️</span>
+        <span class="heart">❤️</span>
+        <span class="heart">❤️</span>
+      </div>
+      <div class="power-ups" id="powerUps">
+        <div class="power-up" id="revealBtn" title="Reveal number (R)">
+          <span class="icon">🔍</span>
+          <span class="count" id="revealCount">3</span>
+        </div>
+        <div class="power-up" id="freezeBtn" title="+2s next round (F)">
+          <span class="icon">⏱️</span>
+          <span class="count" id="freezeCount">2</span>
+        </div>
+      </div>
+      <button class="settings-btn" id="leaderboardBtn" title="Leaderboard" style="right: 5.5rem;">🏆</button>
+      <button class="settings-btn" id="shortcutsBtn" title="Keyboard Shortcuts" style="right: 3rem;">⌨️</button>
+      <button class="settings-btn" id="settingsBtn" title="Settings">⚙️</button>
+    </div>
+
+    <!-- Leaderboard / Auth Modal -->
+    <div class="settings-modal-overlay" id="leaderboardModalOverlay">
+      <div class="settings-modal" style="max-width: 400px;">
+        <div class="settings-header">
+          <h2>Leaderboard</h2>
+          <button class="close-btn" id="closeLeaderboardBtn">×</button>
+        </div>
+        
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="scores">Top Scores</button>
+          <button class="tab-btn" data-tab="account" id="accountTabBtn">My Account</button>
+        </div>
+
+        <!-- Scores Tab -->
+        <div class="tab-content active" id="tab-scores">
+          <div class="score-filters">
+            <button class="filter-btn active" data-filter="normal">Normal</button>
+            <button class="filter-btn" data-filter="chill">Chill</button>
+            <button class="filter-btn" data-filter="hardcore">Hardcore</button>
+          </div>
+          <div class="leaderboard-list" id="leaderboardList">
+            <div class="loading-spinner">Loading...</div>
+          </div>
+        </div>
+
+        <!-- Account Tab -->
+        <div class="tab-content" id="tab-account">
+          <div id="authSection">
+            <p class="auth-intro">Sign in to save your high scores to the global leaderboard.</p>
+            <div class="form-group">
+              <input type="email" id="emailInput" placeholder="Email" class="form-input">
+            </div>
+            <div class="form-group">
+              <input type="password" id="passwordInput" placeholder="Password" class="form-input">
+            </div>
+            <div class="auth-actions">
+              <button class="btn btn-primary" id="loginBtn">Log In</button>
+              <button class="btn btn-secondary" id="signupBtn">Sign Up</button>
+            </div>
+            <div id="authMessage" class="auth-message"></div>
+          </div>
+
+          <div id="profileSection" style="display: none;">
+            <div class="profile-header">
+              <div class="avatar">👤</div>
+              <div class="profile-info">
+                <h3 id="profileUsername">Player</h3>
+                <span class="profile-email" id="profileEmail">email@example.com</span>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label class="label">Update Username</label>
+              <div class="input-row">
+                <input type="text" id="usernameInput" placeholder="Enter username" class="form-input">
+                <button class="btn btn-primary" id="updateProfileBtn" style="padding: 0.6rem;">Save</button>
+              </div>
+            </div>
+
+            <button class="btn btn-secondary" id="logoutBtn" style="margin-top: 1rem; width: 100%; border-color: var(--error); color: var(--error);">Log Out</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Shortcuts Modal -->
+    <div class="settings-modal-overlay" id="shortcutsModalOverlay">
+      <div class="settings-modal">
+        <div class="settings-header">
+          <h2>Shortcuts</h2>
+          <button class="close-btn" id="closeShortcutsBtn">×</button>
+        </div>
+        <div class="shortcuts-list">
+          <div class="shortcut-row">
+            <span class="key-badge">0-9</span>
+            <span>Type Numbers</span>
+          </div>
+          <div class="shortcut-row">
+            <span class="key-badge">Enter</span>
+            <span>Start / Continue</span>
+          </div>
+          <div class="shortcut-row">
+            <span class="key-badge">Space</span>
+            <span>Start / Continue</span>
+          </div>
+          <div class="shortcut-row">
+            <span class="key-badge">⌫</span>
+            <span>Delete Digit</span>
+          </div>
+          <div class="shortcut-row">
+            <span class="key-badge">R</span>
+            <span>🔍 Reveal Number</span>
+          </div>
+          <div class="shortcut-row">
+            <span class="key-badge">F</span>
+            <span>⏱️ Freeze Time</span>
+          </div>
+          <div class="shortcut-row">
+            <span class="key-badge">Esc</span>
+            <span>Menu / Close</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  <!-- Settings Modal -->
+  <div class="settings-modal-overlay" id="settingsModalOverlay">
+    <div class="settings-modal">
+      <div class="settings-header">
+        <h2>Settings</h2>
+        <button class="close-btn" id="closeSettingsBtn">×</button>
+      </div>
+      
+      <div class="settings-section">
+        <h3>Appearance</h3>
+        <div class="theme-switcher">
+          <button class="theme-option active" data-theme="dark">
+            <span>🌙</span> Dark
+          </button>
+          <button class="theme-option" data-theme="light">
+            <span>☀️</span> Light
+          </button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>Gameplay</h3>
+        <div class="settings-row">
+          <div>
+            <div class="label">Real-time feedback</div>
+            <div class="sublabel">Show correct digits green as you type</div>
+          </div>
+          <div class="toggle" id="realtimeToggle"></div>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="label">Keep correct digits</div>
+            <div class="sublabel">Only retype wrong digits on retry</div>
+          </div>
+          <div class="toggle" id="keepCorrectToggle"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="progress-section">
+      <div class="level-info">
+        <div class="level-badge" id="levelBadge">Level 1</div>
+        <div class="level-details"><span id="roundNum">1</span>/10 • <span id="digitCount">1</span>d • <span id="timeCount">1</span>s</div>
+      </div>
+      <div class="round-dots" id="roundDots"></div>
+    </div>
+
+    <div class="display-area" id="displayArea">
+      <div class="new-best" id="newBestIndicator">⭐ New Best!</div>
+      <div class="timer-display" id="timerDisplay"></div>
+      <div class="number-display" id="display"><span class="digit ready">•</span><span class="digit ready">•</span><span class="digit ready">•</span></div>
+      <div class="instruction" id="instruction">Press Start to begin</div>
+      <div class="reveal-hint" id="revealHint">🔍 Tap to reveal</div>
+      <div class="timer-bar" id="timerBar" style="width: 0%"></div>
+    </div>
+
+    <div class="keypad dimmed" id="keypad">
+      <button class="key" data-num="1">1</button>
+      <button class="key" data-num="2">2</button>
+      <button class="key" data-num="3">3</button>
+      <button class="key" data-num="4">4</button>
+      <button class="key" data-num="5">5</button>
+      <button class="key" data-num="6">6</button>
+      <button class="key" data-num="7">7</button>
+      <button class="key" data-num="8">8</button>
+      <button class="key" data-num="9">9</button>
+      <button class="key backspace" data-num="back">⌫</button>
+      <button class="key" data-num="0">0</button>
+      <button class="key backspace" data-num="back">⌫</button>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="startBtn">Start</button>
+      <button class="btn btn-secondary" id="menuBtn">Menu</button>
+    </div>
+  </div>
+
+  <!-- Tutorial Overlay -->
+  <div class="tutorial-overlay" id="tutorialOverlay">
+    <div class="tutorial-slide active" data-step="1">
+      <div class="tutorial-icon">🧠</div>
+      <h2 class="tutorial-title">Welcome to Memory Flash</h2>
+      <p class="tutorial-text">Train your brain with high-speed number recall. Memorize instantly, type fast.</p>
+    </div>
+    <div class="tutorial-slide" data-step="2">
+      <div class="tutorial-icon">⚡</div>
+      <h2 class="tutorial-title">How It Works</h2>
+      <p class="tutorial-text">A number appears briefly. Memorize it before it vanishes. Type it in to survive.</p>
+    </div>
+    <div class="tutorial-slide" data-step="3">
+      <div class="tutorial-icon">📈</div>
+      <h2 class="tutorial-title">Progression</h2>
+      <p class="tutorial-text"><strong>Level 1:</strong> 1 digit in 1 second.<br><strong>Level 10:</strong> 10 digits in 10 seconds.<br>Then the time gets shorter!</p>
+    </div>
+    <div class="tutorial-slide" data-step="4">
+      <div class="tutorial-icon">🔋</div>
+      <h2 class="tutorial-title">Power-Ups</h2>
+      <p class="tutorial-text"><strong>🔍 Reveal:</strong> Peek at the number again.<br><strong>⏱️ Freeze:</strong> Get +2s on the next round.<br>Use them wisely!</p>
+    </div>
+    <div class="tutorial-slide" data-step="5">
+      <div class="tutorial-icon">🚀</div>
+      <h2 class="tutorial-title">Ready?</h2>
+      <p class="tutorial-text">Tap anywhere to start the game.</p>
+    </div>
+
+    <div class="tutorial-dots" id="tutorialDots">
+      <div class="tutorial-dot active"></div>
+      <div class="tutorial-dot"></div>
+      <div class="tutorial-dot"></div>
+      <div class="tutorial-dot"></div>
+      <div class="tutorial-dot"></div>
+    </div>
+
+    <button class="btn btn-primary" id="tutorialNextBtn" style="width: 100%; max-width: 200px;">Next</button>
+  </div>
+
+  <!-- Level Up Toast -->
+  <div class="level-toast" id="levelToast">
+    Level <span class="toast-level" id="toastLevel">2</span> 🎯
+  </div>
+
+  <!-- Level Picker -->
+  <div class="level-picker-overlay" id="levelPickerOverlay">
+    <div class="level-picker">
+      <h3>Select Starting Level</h3>
+      <div class="level-grid" id="levelGrid"></div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <h2 id="modalTitle" class="fail">Game Over</h2>
+      <div class="subtitle" id="modalSubtitle">You reached</div>
+      <div class="final-level" id="finalLevel">1</div>
+      <div class="best-label" id="bestLabel" style="display: none;">🏆 New Best!</div>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-label">Digits</div>
+          <div class="stat-value" id="statDigits">1</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Time</div>
+          <div class="stat-value" id="statTime">1s</div>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="retryBtn">Try Again</button>
+      <button class="btn btn-secondary" id="modalMenuBtn">Main Menu</button>
+    </div>
+  </div>
+
+  <script>
+    // Elements
+    const modeScreen = document.getElementById('modeScreen');
+    const display = document.getElementById('display');
+    const displayArea = document.getElementById('displayArea');
+    const instruction = document.getElementById('instruction');
+    const timerBar = document.getElementById('timerBar');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const levelBadge = document.getElementById('levelBadge');
+    const digitCount = document.getElementById('digitCount');
+    const timeCount = document.getElementById('timeCount');
+    const roundNum = document.getElementById('roundNum');
+    const roundDots = document.getElementById('roundDots');
+    const livesDisplay = document.getElementById('livesDisplay');
+    const keypad = document.getElementById('keypad');
+    const startBtn = document.getElementById('startBtn');
+    const menuBtn = document.getElementById('menuBtn');
+    const modal = document.getElementById('modal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalSubtitle = document.getElementById('modalSubtitle');
+    const finalLevel = document.getElementById('finalLevel');
+    const bestLabel = document.getElementById('bestLabel');
+    const statDigits = document.getElementById('statDigits');
+    const statTime = document.getElementById('statTime');
+    const retryBtn = document.getElementById('retryBtn');
+    const modalMenuBtn = document.getElementById('modalMenuBtn');
+    const revealBtn = document.getElementById('revealBtn');
+    const freezeBtn = document.getElementById('freezeBtn');
+    const revealCount = document.getElementById('revealCount');
+    const freezeCount = document.getElementById('freezeCount');
+    const newBestIndicator = document.getElementById('newBestIndicator');
+    const levelToast = document.getElementById('levelToast');
+    const toastLevel = document.getElementById('toastLevel');
+    const levelPickerOverlay = document.getElementById('levelPickerOverlay');
+    const levelGrid = document.getElementById('levelGrid');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const shortcutsBtn = document.getElementById('shortcutsBtn');
+    const settingsModalOverlay = document.getElementById('settingsModalOverlay');
+    const shortcutsModalOverlay = document.getElementById('shortcutsModalOverlay');
+    const leaderboardBtn = document.getElementById('leaderboardBtn');
+    const leaderboardModalOverlay = document.getElementById('leaderboardModalOverlay');
+    const closeLeaderboardBtn = document.getElementById('closeLeaderboardBtn');
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    const authSection = document.getElementById('authSection');
+    const profileSection = document.getElementById('profileSection');
+    const emailInput = document.getElementById('emailInput');
+    const passwordInput = document.getElementById('passwordInput');
+    const loginBtn = document.getElementById('loginBtn');
+    const signupBtn = document.getElementById('signupBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const authMessage = document.getElementById('authMessage');
+    const profileUsername = document.getElementById('profileUsername');
+    const profileEmail = document.getElementById('profileEmail');
+    const usernameInput = document.getElementById('usernameInput');
+    const updateProfileBtn = document.getElementById('updateProfileBtn');
+    const leaderboardList = document.getElementById('leaderboardList');
+
+    const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+    const closeShortcutsBtn = document.getElementById('closeShortcutsBtn');
+    const realtimeToggle = document.getElementById('realtimeToggle');
+    const keepCorrectToggle = document.getElementById('keepCorrectToggle');
+    const tutorialOverlay = document.getElementById('tutorialOverlay');
+    const tutorialNextBtn = document.getElementById('tutorialNextBtn');
+    const tutorialDots = document.getElementById('tutorialDots');
+    const themeOptions = document.querySelectorAll('.theme-option');
+
+    // Supabase Config (Safe Init)
+    const SUPABASE_URL = 'https://gzzxheqstpkozcmcparm.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd6enhoZXFzdHBrb3pjbWNwYXJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0MTIwODUsImV4cCI6MjA4NTk4ODA4NX0.mzb18ZHgWMrqOAPSQy7vYUlsnxHF4JBTnUcz1I5qDz8';
+    let supabase = null;
+    try {
+      if (window.supabase) {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      } else {
+        console.warn('Supabase client not loaded');
+      }
+    } catch (e) {
+      console.error('Supabase init failed:', e);
+    }
+
+    let currentUser = null;
+    let currentProfile = null;
+    let currentLeaderboardFilter = 'normal';
+
+    // Game Config by Mode
+    const MODES = {
+      chill: { lives: 5, timerMult: 1.3, startReveals: 5, startFreezes: 3, earnRate: 2, zen: false },
+      zen: { lives: 999, timerMult: 1.5, startReveals: 0, startFreezes: 0, earnRate: 0, zen: true },
+      normal: { lives: 3, timerMult: 1.0, startReveals: 3, startFreezes: 2, earnRate: 3, zen: false },
+      hardcore: { lives: 1, timerMult: 0.8, startReveals: 0, startFreezes: 0, earnRate: 0, zen: false }
+    };
+
+    // Total levels: 10 (with 10 rounds each)
+    // Level 1-9: 10 rounds of fixed time
+    // Level 10: 10 rounds of decreasing time
+    const MAX_LEVEL = 10;
+    const ROUNDS_PER_LEVEL = 10;
+
+    function getLevelConfig(level, round) {
+      if (level < 10) {
+        // Levels 1-9: Digits = Level, Time = Level (min 1.5s for level 1 to be fair)
+        return { 
+          digits: level, 
+          time: Math.max(1.5, level) 
+        };
+      } else {
+        // Level 10: 10 Digits, Time decreases 10s -> 1s
+        return { 
+          digits: 10, 
+          time: 11 - round 
+        };
+      }
+    }
+
+    // Game State
+    let mode = 'normal';
+    let level = 1;
+    let round = 1;
+    let startLevel = 1;
+    let lives = 3;
+    let maxLives = 3;
+    let reveals = 3;
+    let freezes = 2;
+    let currentNumber = '';
+    let userInput = '';
+    let gameState = 'idle';
+    let showTimeoutId = null;
+    let countdownId = null;
+    let freezeActive = false;
+    let bestLevel = parseInt(localStorage.getItem('memoryFlashBest') || '0');
+    let isNewBest = false;
+    let perfectStreak = 0;
+    let realtimeFeedback = localStorage.getItem('memoryFlashRealtime') === 'true';
+    let keepCorrectDigits = localStorage.getItem('memoryFlashKeepCorrect') === 'true';
+    let currentTheme = localStorage.getItem('memoryFlashTheme') || 'dark';
+    let lockedDigits = []; // Indices of correct digits that are locked
+    let hasSeenTutorial = localStorage.getItem('memoryFlashTutorialSeen') === 'true';
+    let tutorialStep = 1;
+    let zenResults = []; // For zen mode review
+    let zenRound = 0;
+
+    // Supabase Auth & Logic (Wrapped)
+    async function checkSession() {
+      if (!supabase) return;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          handleUser(session.user);
+        }
+      } catch (e) {
+        console.log('Supabase session check failed (offline?):', e);
+      }
+    }
+    checkSession();
+
+    async function handleUser(user) {
+      currentUser = user;
+      authSection.style.display = 'none';
+      profileSection.style.display = 'block';
+      profileEmail.textContent = user.email;
+      
+      // Fetch profile
+      const { data } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', user.id)
+        .single();
+        
+      if (data && data.username) {
+        currentProfile = data;
+        profileUsername.textContent = data.username;
+        usernameInput.value = data.username;
+      } else {
+        profileUsername.textContent = 'Player';
+      }
+    }
+
+    async function signUp() {
+      const email = emailInput.value;
+      const password = passwordInput.value;
+      authMessage.textContent = 'Signing up...';
+      authMessage.className = 'auth-message';
+      
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      
+      if (error) {
+        authMessage.textContent = error.message;
+        authMessage.className = 'auth-message error';
+      } else {
+        authMessage.textContent = 'Check your email for confirmation link!';
+        authMessage.className = 'auth-message success';
+      }
+    }
+
+    async function logIn() {
+      const email = emailInput.value;
+      const password = passwordInput.value;
+      authMessage.textContent = 'Logging in...';
+      authMessage.className = 'auth-message';
+      
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      
+      if (error) {
+        authMessage.textContent = error.message;
+        authMessage.className = 'auth-message error';
+      } else {
+        handleUser(data.user);
+        authMessage.textContent = '';
+      }
+    }
+
+    async function logOut() {
+      await supabase.auth.signOut();
+      currentUser = null;
+      currentProfile = null;
+      authSection.style.display = 'block';
+      profileSection.style.display = 'none';
+      emailInput.value = '';
+      passwordInput.value = '';
+    }
+
+    async function updateProfile() {
+      const username = usernameInput.value;
+      if (username.length < 3) {
+        alert('Username must be at least 3 characters');
+        return;
+      }
+      
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({ id: currentUser.id, username, updated_at: new Date() });
+        
+      if (error) {
+        alert('Error updating profile: ' + error.message);
+      } else {
+        profileUsername.textContent = username;
+        currentProfile = { username };
+        alert('Profile updated!');
+      }
+    }
+
+    async function saveScore(level) {
+      if (!currentUser || !currentProfile) return;
+      
+      const { error } = await supabase
+        .from('scores')
+        .insert({
+          user_id: currentUser.id,
+          username: currentProfile.username,
+          level: level,
+          mode: mode,
+          timestamp: new Date()
+        });
+        
+      if (error) console.error('Error saving score:', error);
+    }
+
+    async function fetchLeaderboard(filterMode) {
+      leaderboardList.innerHTML = '<div class="loading-spinner">Loading...</div>';
+      
+      const { data, error } = await supabase
+        .from('scores')
+        .select('username, level, timestamp')
+        .eq('mode', filterMode)
+        .order('level', { ascending: false })
+        .order('timestamp', { ascending: false })
+        .limit(20);
+        
+      if (error) {
+        leaderboardList.innerHTML = '<div style="text-align:center; padding:1rem; color:var(--error);">Failed to load scores</div>';
+        return;
+      }
+      
+      if (data.length === 0) {
+        leaderboardList.innerHTML = '<div style="text-align:center; padding:1rem; color:var(--text-muted);">No scores yet. Be the first!</div>';
+        return;
+      }
+      
+      let html = '';
+      data.forEach((score, i) => {
+        html += `
+          <div class="score-row">
+            <span class="score-rank">#${i + 1}</span>
+            <span class="score-user">${score.username}</span>
+            <span class="score-val">Lvl ${score.level}</span>
+          </div>
+        `;
+      });
+      leaderboardList.innerHTML = html;
+    }
+
+    // UI Logic for Leaderboard
+    leaderboardBtn.addEventListener('click', () => {
+      if (gameState === 'idle') {
+        leaderboardModalOverlay.classList.add('visible');
+        fetchLeaderboard(currentLeaderboardFilter);
+      }
+    });
+
+    closeLeaderboardBtn.addEventListener('click', () => {
+      leaderboardModalOverlay.classList.remove('visible');
+    });
+
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabBtns.forEach(b => b.classList.remove('active'));
+        tabContents.forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+      });
+    });
+
+    filterBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        filterBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentLeaderboardFilter = btn.dataset.filter;
+        fetchLeaderboard(currentLeaderboardFilter);
+      });
+    });
+
+    loginBtn.addEventListener('click', logIn);
+    signupBtn.addEventListener('click', signUp);
+    logoutBtn.addEventListener('click', logOut);
+    updateProfileBtn.addEventListener('click', updateProfile);
+
+    // Initialize dots
+    function createDots() {
+      roundDots.innerHTML = '';
+      for (let i = 0; i < ROUNDS_PER_LEVEL; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'dot';
+        roundDots.appendChild(dot);
+      }
+    }
+    createDots();
+
+    function getDisplayTime() {
+      const config = getLevelConfig(level, round);
+      let time = config.time * 1000 * MODES[mode].timerMult;
+      if (freezeActive) {
+        time += 2000;
+        freezeActive = false;
+      }
+      return Math.max(1000, Math.round(time));
+    }
+
+    function generateNumber(digits) {
+      let num = '';
+      for (let i = 0; i < digits; i++) {
+        if (i === 0 && digits > 1) {
+          num += Math.floor(Math.random() * 9) + 1;
+        } else {
+          num += Math.floor(Math.random() * 10);
+        }
+      }
+      return num;
+    }
+
+    function setKeysEnabled(enabled) {
+      keypad.querySelectorAll('.key').forEach(key => {
+        key.disabled = !enabled;
+      });
+      keypad.classList.toggle('dimmed', !enabled);
+      keypad.classList.toggle('active', enabled);
+    }
+
+    function updateLivesDisplay() {
+      livesDisplay.innerHTML = '';
+      for (let i = 0; i < maxLives; i++) {
+        const heart = document.createElement('span');
+        heart.className = 'heart' + (i >= lives ? ' empty' : '');
+        heart.textContent = '❤️';
+        livesDisplay.appendChild(heart);
+      }
+    }
+
+    function updatePowerUps() {
+      revealCount.textContent = reveals;
+      freezeCount.textContent = freezes;
+      revealBtn.classList.toggle('disabled', reveals <= 0 || gameState !== 'input');
+      freezeBtn.classList.toggle('disabled', freezes <= 0 || gameState !== 'idle');
+      
+      const canReveal = reveals > 0 && gameState === 'input' && mode !== 'hardcore';
+      displayArea.classList.toggle('can-reveal', canReveal);
+    }
+
+    function checkNewBest() {
+      if (level > bestLevel) {
+        bestLevel = level;
+        localStorage.setItem('memoryFlashBest', bestLevel.toString());
+        if (!isNewBest) {
+          isNewBest = true;
+          newBestIndicator.classList.add('visible');
+        }
+        return true;
+      }
+      return false;
+    }
+
+    function updateUI() {
+      const config = getLevelConfig(level, round);
+      levelBadge.textContent = `Level ${level}`;
+      roundNum.textContent = round;
+      digitCount.textContent = config.digits;
+      timeCount.textContent = config.time;
+      
+      const dots = roundDots.querySelectorAll('.dot');
+      dots.forEach((dot, i) => {
+        dot.className = 'dot';
+        if (i < round - 1) dot.classList.add('complete');
+        else if (i === round - 1) dot.classList.add('current');
+      });
+
+      updateLivesDisplay();
+      updatePowerUps();
+    }
+
+    function buildLevelPicker() {
+      levelGrid.innerHTML = '';
+      for (let i = 1; i <= MAX_LEVEL; i++) {
+        const config = getLevelConfig(i, 1);
+        const btn = document.createElement('button');
+        btn.className = 'level-option' + (i === startLevel ? ' selected' : '');
+        btn.innerHTML = `${i}<span class="level-meta">${config.digits}d/${config.time}s</span>`;
+        btn.addEventListener('click', () => {
+          startLevel = i;
+          level = startLevel;
+          round = 1;
+          updateUI();
+          levelPickerOverlay.classList.remove('visible');
+        });
+        levelGrid.appendChild(btn);
+      }
+    }
+
+    function showLevelPicker() {
+      if (gameState !== 'idle') return;
+      buildLevelPicker();
+      levelPickerOverlay.classList.add('visible');
+    }
+
+    function triggerLevelPop() {
+      levelBadge.classList.remove('pop');
+      void levelBadge.offsetWidth;
+      levelBadge.classList.add('pop');
+    }
+
+    function showLevelToast() {
+      toastLevel.textContent = level;
+      levelToast.classList.add('visible');
+      setTimeout(() => {
+        levelToast.classList.remove('visible');
+      }, 1500);
+    }
+
+    function renderDisplay(text, classes = []) {
+      display.innerHTML = '';
+      for (const char of text) {
+        const span = document.createElement('span');
+        span.className = 'digit ' + classes.join(' ');
+        span.textContent = char;
+        display.appendChild(span);
+      }
+    }
+
+    function renderReadyState() {
+      display.innerHTML = '';
+      for (let i = 0; i < 3; i++) {
+        const span = document.createElement('span');
+        span.className = 'digit ready';
+        span.textContent = '•';
+        display.appendChild(span);
+      }
+      instruction.textContent = 'Tap to start';
+    }
+
+    function renderInputWithFeedback() {
+      const config = getLevelConfig(level, round);
+      display.innerHTML = '';
+      let inputIndex = 0;
+      
+      for (let i = 0; i < config.digits; i++) {
+        const span = document.createElement('span');
+        span.className = 'digit';
+        
+        // Check if this position is locked (correct from previous attempt)
+        if (lockedDigits.includes(i)) {
+          span.textContent = currentNumber[i];
+          span.classList.add('correct');
+          span.style.opacity = '0.7';
+        } else if (inputIndex < userInput.length) {
+          span.textContent = userInput[inputIndex];
+          // Real-time feedback
+          if (realtimeFeedback && userInput[inputIndex] === currentNumber[i]) {
+            span.classList.add('correct');
+          } else if (realtimeFeedback && userInput[inputIndex] !== currentNumber[i]) {
+            span.classList.add('wrong');
+          }
+          inputIndex++;
+        } else {
+          span.textContent = '_';
+          span.classList.add('pending');
+        }
+        display.appendChild(span);
+      }
+    }
+
+    function renderPartialCredit() {
+      display.innerHTML = '';
+      for (let i = 0; i < currentNumber.length; i++) {
+        const span = document.createElement('span');
+        span.className = 'digit';
+        span.textContent = userInput[i] || '_';
+        if (i < userInput.length) {
+          if (userInput[i] === currentNumber[i]) {
+            span.classList.add('correct');
+          } else {
+            span.classList.add('wrong');
+          }
+        }
+        display.appendChild(span);
+      }
+    }
+
+    function flashCorrect() {
+      displayArea.classList.remove('flash-correct', 'flash-wrong');
+      void displayArea.offsetWidth;
+      displayArea.classList.add('flash-correct');
+      display.classList.add('correct-pop');
+      setTimeout(() => {
+        displayArea.classList.remove('flash-correct');
+        display.classList.remove('correct-pop');
+      }, 500);
+    }
+
+    function flashWrong() {
+      displayArea.classList.remove('flash-correct', 'flash-wrong');
+      void displayArea.offsetWidth;
+      displayArea.classList.add('flash-wrong');
+      setTimeout(() => {
+        displayArea.classList.remove('flash-wrong');
+      }, 500);
+    }
+
+    function showNumber() {
+      gameState = 'showing';
+      const config = getLevelConfig(level, round);
+      currentNumber = generateNumber(config.digits);
+      userInput = '';
+      lockedDigits = []; // Reset for new number
+      
+      renderDisplay(currentNumber, ['showing']);
+      
+      const displayTime = getDisplayTime();
+      const displaySecs = Math.round(displayTime / 1000);
+      instruction.textContent = `Memorize! (type to start)`;
+      
+      setKeysEnabled(true);
+      startBtn.disabled = true;
+      updatePowerUps();
+
+      let remaining = displaySecs;
+      timerDisplay.textContent = remaining + 's';
+      timerDisplay.className = 'timer-display';
+      
+      countdownId = setInterval(() => {
+        remaining--;
+        if (remaining > 0) {
+          timerDisplay.textContent = remaining + 's';
+          if (remaining <= 2) timerDisplay.className = 'timer-display critical';
+          else if (remaining <= 3) timerDisplay.className = 'timer-display warning';
+        }
+      }, 1000);
+
+      timerBar.style.transition = 'none';
+      timerBar.style.width = '100%';
+      requestAnimationFrame(() => {
+        timerBar.style.transition = `width ${displayTime}ms linear`;
+        timerBar.style.width = '0%';
+      });
+
+      showTimeoutId = setTimeout(() => {
+        clearInterval(countdownId);
+        startInput();
+      }, displayTime);
+    }
+
+    function startInput() {
+      gameState = 'input';
+      renderInputWithFeedback();
+      instruction.textContent = 'Enter the number!';
+      timerDisplay.textContent = '';
+      setKeysEnabled(true);
+      updatePowerUps();
+    }
+
+    function quickStartInput() {
+      clearTimeout(showTimeoutId);
+      clearInterval(countdownId);
+      gameState = 'input';
+      timerBar.style.transition = 'none';
+      timerBar.style.width = '0%';
+      timerDisplay.textContent = '';
+      instruction.textContent = 'Enter the number!';
+      updatePowerUps();
+    }
+
+    function useReveal() {
+      if (reveals <= 0 || gameState !== 'input') return;
+      reveals--;
+      updatePowerUps();
+      
+      renderDisplay(currentNumber, ['showing']);
+      instruction.textContent = 'Revealing...';
+      setKeysEnabled(false);
+      
+      setTimeout(() => {
+        renderInputWithFeedback();
+        instruction.textContent = 'Enter the number!';
+        setKeysEnabled(true);
+      }, 2000);
+    }
+
+    function useFreeze() {
+      if (freezes <= 0 || gameState !== 'idle') return;
+      freezes--;
+      freezeActive = true;
+      freezeBtn.classList.add('active');
+      updatePowerUps();
+      instruction.textContent = '⏱️ +2s on next level!';
+      
+      setTimeout(() => {
+        freezeBtn.classList.remove('active');
+      }, 1000);
+    }
+
+    function handleKeyPress(key) {
+      if (gameState !== 'input' && gameState !== 'showing') return;
+
+      if (gameState === 'showing') {
+        quickStartInput();
+      }
+
+      if (key === 'back') {
+        if (userInput.length > 0) {
+          userInput = userInput.slice(0, -1);
+          renderInputWithFeedback();
+        }
+        return;
+      }
+
+      const config = getLevelConfig(level, round);
+      const neededDigits = config.digits - lockedDigits.length;
+      if (userInput.length >= neededDigits) return;
+      
+      userInput += key;
+      renderInputWithFeedback();
+
+      if (userInput.length === neededDigits) {
+        setKeysEnabled(false);
+        
+        // Build full input by combining locked digits with user input
+        let fullInput = '';
+        let inputIndex = 0;
+        for (let i = 0; i < config.digits; i++) {
+          if (lockedDigits.includes(i)) {
+            fullInput += currentNumber[i];
+          } else {
+            fullInput += userInput[inputIndex] || '';
+            inputIndex++;
+          }
+        }
+        
+        const isCorrect = fullInput === currentNumber;
+        
+        // Zen mode: track results, no lives
+        if (MODES[mode].zen) {
+          zenResults.push({
+            number: currentNumber,
+            input: fullInput,
+            correct: isCorrect,
+            level: level
+          });
+          zenRound++;
+          
+          if (isCorrect) {
+            renderDisplay(userInput, ['correct']);
+            flashCorrect();
+            instruction.textContent = '✓';
+          } else {
+            renderPartialCredit();
+            flashWrong();
+            instruction.textContent = 'Moving on...';
+          }
+          
+          // After 10 rounds, show review
+          if (zenRound >= 10) {
+            setTimeout(() => showZenReview(), 800);
+          } else {
+            if (!isCorrect || level >= MAX_LEVEL && round >= 10) {
+              // Stay at same level if wrong, or if at max
+              setTimeout(() => showNumber(), 800);
+            } else {
+              // Advance round
+              if (round < ROUNDS_PER_LEVEL) {
+                round++;
+              } else {
+                level++;
+                round = 1;
+              }
+              updateUI();
+              triggerLevelPop();
+              showLevelToast();
+              setTimeout(() => showNumber(), 600);
+            }
+          }
+          return;
+        }
+        
+        if (isCorrect) {
+          // Correct!
+          renderDisplay(fullInput, ['correct']);
+          flashCorrect();
+          instruction.textContent = '✓';
+          perfectStreak++;
+          lockedDigits = []; // Clear locks for next number
+          
+          // Maybe earn a power-up
+          maybeEarnPowerUp();
+          
+          if (level >= MAX_LEVEL && round >= ROUNDS_PER_LEVEL) {
+            // Beat the game!
+            checkNewBest();
+            setTimeout(() => showVictory(), 600);
+          } else {
+            if (round < ROUNDS_PER_LEVEL) {
+              round++;
+            } else {
+              level++;
+              round = 1;
+            }
+            checkNewBest();
+            updateUI();
+            triggerLevelPop();
+            // showLevelToast(); // Only toast on level up?
+            if (round === 1) showLevelToast();
+            setTimeout(() => showNumber(), 500);
+          }
+        } else {
+          // Wrong - find which digits were correct for locking
+          const correctIndices = [];
+          let inputIdx = 0;
+          for (let i = 0; i < config.digits; i++) {
+            if (lockedDigits.includes(i)) {
+              correctIndices.push(i); // Keep previously locked
+            } else {
+              if (userInput[inputIdx] === currentNumber[i]) {
+                correctIndices.push(i);
+              }
+              inputIdx++;
+            }
+          }
+          
+          renderPartialCredit();
+          flashWrong();
+          instruction.textContent = 'Try again';
+          perfectStreak = 0;
+          lives--;
+          updateLivesDisplay();
+          
+          const hearts = livesDisplay.querySelectorAll('.heart');
+          if (hearts[lives]) hearts[lives].classList.add('lost');
+          
+          if (lives <= 0) {
+            lockedDigits = [];
+            setTimeout(() => showGameOver(), 800);
+          } else {
+            // Apply locked digits if setting is on
+            if (keepCorrectDigits) {
+              lockedDigits = correctIndices;
+            }
+            setTimeout(() => {
+              userInput = '';
+              renderInputWithFeedback();
+              instruction.textContent = 'Enter the number!';
+              setKeysEnabled(true);
+            }, 1500);
+          }
+        }
+      }
+    }
+
+    function showZenReview() {
+      gameState = 'idle';
+      const correctCount = zenResults.filter(r => r.correct).length;
+      
+      modalTitle.textContent = 'Practice Complete';
+      modalTitle.className = 'success';
+      modalSubtitle.textContent = `${correctCount}/10 correct`;
+      
+      // Build review list
+      let reviewHTML = '<div class="review-list">';
+      zenResults.forEach((r, i) => {
+        const status = r.correct ? 'correct' : 'wrong';
+        const icon = r.correct ? '✓' : '✗';
+        reviewHTML += `<div class="review-item ${status}">
+          <span>${i + 1}. ${r.number}</span>
+          <span>${r.correct ? '' : r.input + ' → '}${r.correct ? '' : r.number}</span>
+          <span class="result-icon">${icon}</span>
+        </div>`;
+      });
+      reviewHTML += '</div>';
+      
+      // Insert review before stats
+      const statsGrid = modal.querySelector('.stats-grid');
+      const existingReview = modal.querySelector('.review-list');
+      if (existingReview) existingReview.remove();
+      statsGrid.insertAdjacentHTML('beforebegin', reviewHTML);
+      
+      statDigits.textContent = correctCount;
+      statTime.textContent = '10';
+      document.querySelector('.stat-box:first-child .stat-label').textContent = 'Correct';
+      document.querySelector('.stat-box:last-child .stat-label').textContent = 'Rounds';
+      
+      bestLabel.style.display = 'none';
+      retryBtn.textContent = 'Continue Practice';
+      
+      modal.classList.add('visible');
+    }
+
+    function maybeEarnPowerUp() {
+      if (mode === 'hardcore') return;
+      
+      const earnRate = MODES[mode].earnRate;
+      if (earnRate > 0 && perfectStreak > 0 && perfectStreak % earnRate === 0) {
+        if (Math.random() < 0.6) {
+          reveals++;
+        } else {
+          freezes++;
+        }
+        updatePowerUps();
+      }
+    }
+
+    function showGameOver() {
+      gameState = 'idle';
+      const config = getLevelConfig(level, round);
+      const wasNewBest = checkNewBest();
+      
+      // Save score if logged in and not zen
+      if (currentUser && mode !== 'zen') {
+        saveScore(level);
+      }
+      
+      modalTitle.textContent = 'Game Over';
+      modalTitle.className = 'fail';
+      modalSubtitle.textContent = 'You reached';
+      finalLevel.textContent = level;
+      statDigits.textContent = config.digits;
+      statTime.textContent = config.time + 's';
+      bestLabel.style.display = wasNewBest ? 'block' : 'none';
+      retryBtn.textContent = 'Try Again';
+      
+      modal.classList.add('visible');
+    }
+
+    function showVictory() {
+      gameState = 'idle';
+      const wasNewBest = checkNewBest();
+      
+      // Save score
+      if (currentUser && mode !== 'zen') {
+        saveScore(MAX_LEVEL);
+      }
+      
+      modalTitle.textContent = '🏆 Victory!';
+      modalTitle.className = 'success';
+      modalSubtitle.textContent = 'You mastered all levels!';
+      finalLevel.textContent = MAX_LEVEL;
+      statDigits.textContent = '10';
+      statTime.textContent = '1s';
+      bestLabel.style.display = wasNewBest ? 'block' : 'none';
+      retryBtn.textContent = 'Play Again';
+      
+      modal.classList.add('visible');
+    }
+
+    function startGame() {
+      level = startLevel;
+      round = 1;
+      lives = maxLives;
+      zenResults = [];
+      zenRound = 0;
+      updateUI();
+      startBtn.textContent = 'Training...';
+      settingsModalOverlay.classList.remove('visible');
+      triggerLevelPop();
+      showNumber();
+    }
+
+    function resetToMenu() {
+      clearTimeout(showTimeoutId);
+      clearInterval(countdownId);
+      modal.classList.remove('visible');
+      modeScreen.classList.remove('hidden');
+      gameState = 'idle';
+      newBestIndicator.classList.remove('visible');
+      isNewBest = false;
+    }
+
+    function selectMode(selectedMode) {
+      mode = selectedMode;
+      const config = MODES[mode];
+      
+      level = 1;
+      round = 1;
+      startLevel = 1;
+      lives = config.lives;
+      maxLives = config.lives;
+      reveals = config.startReveals;
+      freezes = config.startFreezes;
+      perfectStreak = 0;
+      freezeActive = false;
+      isNewBest = false;
+      zenResults = [];
+      zenRound = 0;
+      newBestIndicator.classList.remove('visible');
+      
+      // Hide power-ups and lives for zen/hardcore
+      document.getElementById('powerUps').style.display = (mode === 'hardcore' || mode === 'zen') ? 'none' : 'flex';
+      livesDisplay.style.display = mode === 'zen' ? 'none' : 'flex';
+      
+      renderReadyState();
+      timerDisplay.textContent = '';
+      timerBar.style.width = '0%';
+      
+      updateUI();
+      setKeysEnabled(false);
+      startBtn.disabled = false;
+      startBtn.textContent = 'Start';
+      
+      modeScreen.classList.add('hidden');
+
+      if (!hasSeenTutorial) {
+        showTutorial();
+      }
+    }
+
+    // Tutorial Logic
+    function showTutorial() {
+      tutorialOverlay.classList.add('visible');
+      tutorialStep = 1;
+      updateTutorial();
+    }
+
+    function updateTutorial() {
+      document.querySelectorAll('.tutorial-slide').forEach(s => s.classList.remove('active'));
+      document.querySelector(`.tutorial-slide[data-step="${tutorialStep}"]`).classList.add('active');
+      
+      const dots = tutorialDots.querySelectorAll('.tutorial-dot');
+      dots.forEach((d, i) => d.classList.toggle('active', i + 1 === tutorialStep));
+      
+      tutorialNextBtn.textContent = tutorialStep === 5 ? 'Let\'s Go!' : 'Next';
+    }
+
+    tutorialNextBtn.addEventListener('click', () => {
+      if (tutorialStep < 5) {
+        tutorialStep++;
+        updateTutorial();
+      } else {
+        tutorialOverlay.classList.remove('visible');
+        localStorage.setItem('memoryFlashTutorialSeen', 'true');
+        hasSeenTutorial = true;
+        setTimeout(startGame, 300);
+      }
+    });
+
+    // Event Listeners (Attach early)
+    const modeCards = document.querySelectorAll('.mode-card');
+    
+    // Debug
+    console.log('Attaching listeners to', modeCards.length, 'mode cards');
+
+    modeCards.forEach(card => {
+      // Handle both Click and Touch to ensure mobile responsiveness
+      const handleSelect = (e) => {
+        // Only prevent default on touch to avoid double-firing, let click pass through if needed
+        if (e.type === 'touchstart') e.preventDefault();
+        
+        // Visual feedback
+        card.style.transform = 'scale(0.98)';
+        setTimeout(() => card.style.transform = '', 100);
+        
+        console.log('Mode selected:', card.dataset.mode);
+        try {
+          selectMode(card.dataset.mode);
+        } catch (err) {
+          console.error('Error starting game:', err);
+          alert('Error starting game: ' + err.message);
+        }
+      };
+
+      card.addEventListener('click', handleSelect);
+      card.addEventListener('touchstart', handleSelect, { passive: false });
+    });
+
+    keypad.addEventListener('click', (e) => {
+      const key = e.target.closest('.key');
+      if (key && !key.disabled) {
+        handleKeyPress(key.dataset.num);
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (gameState === 'input' || gameState === 'showing') {
+        if (/^[0-9]$/.test(e.key)) handleKeyPress(e.key);
+        else if (e.key === 'Backspace') handleKeyPress('back');
+        else if (e.key.toLowerCase() === 'r' && gameState === 'input') useReveal();
+      }
+      if (e.key.toLowerCase() === 'f' && gameState === 'idle' && modeScreen.classList.contains('hidden')) {
+        useFreeze();
+      }
+      if (e.key === 'Enter' || e.key === ' ') {
+        if (levelPickerOverlay.classList.contains('visible')) {
+          levelPickerOverlay.classList.remove('visible');
+        } else if (modal.classList.contains('visible')) {
+          modal.classList.remove('visible');
+          level = startLevel;
+          round = 1;
+          perfectStreak = 0;
+          startBtn.disabled = false;
+          startBtn.textContent = 'Start';
+          renderReadyState();
+          instruction.textContent = 'Press Start to begin';
+          updateUI();
+        } else if (gameState === 'idle' && modeScreen.classList.contains('hidden') && !settingsModalOverlay.classList.contains('visible') && !shortcutsModalOverlay.classList.contains('visible')) {
+          startGame();
+        }
+      }
+      if (e.key === 'Escape') {
+        levelPickerOverlay.classList.remove('visible');
+        settingsModalOverlay.classList.remove('visible');
+        shortcutsModalOverlay.classList.remove('visible');
+        if (modal.classList.contains('visible')) {
+          resetToMenu();
+        }
+      }
+    });
+
+    startBtn.addEventListener('click', startGame);
+    menuBtn.addEventListener('click', resetToMenu);
+    
+    revealBtn.addEventListener('click', useReveal);
+    freezeBtn.addEventListener('click', useFreeze);
+    
+    displayArea.addEventListener('click', () => {
+      if (gameState === 'idle' && modeScreen.classList.contains('hidden')) {
+        startGame();
+      } else if (gameState === 'input' && reveals > 0 && mode !== 'hardcore') {
+        useReveal();
+      }
+    });
+    
+    retryBtn.addEventListener('click', () => {
+      modal.classList.remove('visible');
+      level = startLevel;
+      round = 1;
+      perfectStreak = 0;
+      isNewBest = false;
+      newBestIndicator.classList.remove('visible');
+      startBtn.textContent = 'Start';
+      startBtn.disabled = false;
+      renderReadyState();
+      instruction.textContent = 'Press Start to begin';
+      updateUI();
+    });
+
+    modalMenuBtn.addEventListener('click', resetToMenu);
+
+    levelBadge.addEventListener('click', showLevelPicker);
+
+    levelPickerOverlay.addEventListener('click', (e) => {
+      if (e.target === levelPickerOverlay) {
+        levelPickerOverlay.classList.remove('visible');
+      }
+    });
+
+    console.log('Memory Flash v1.2 - Loaded');
+
+    // Theme Handling
+    function setTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('memoryFlashTheme', theme);
+      currentTheme = theme;
+      
+      themeOptions.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.theme === theme);
+      });
+    }
+
+    // Initialize theme
+    setTheme(currentTheme);
+
+    themeOptions.forEach(btn => {
+      btn.addEventListener('click', () => setTheme(btn.dataset.theme));
+    });
+
+    // Settings
+    settingsBtn.addEventListener('click', () => {
+      if (gameState === 'idle') {
+        settingsModalOverlay.classList.add('visible');
+      }
+    });
+
+    closeSettingsBtn.addEventListener('click', () => {
+      settingsModalOverlay.classList.remove('visible');
+    });
+
+    settingsModalOverlay.addEventListener('click', (e) => {
+      if (e.target === settingsModalOverlay) {
+        settingsModalOverlay.classList.remove('visible');
+      }
+    });
+
+    shortcutsBtn.addEventListener('click', () => {
+      if (gameState === 'idle') {
+        shortcutsModalOverlay.classList.add('visible');
+      }
+    });
+
+    closeShortcutsBtn.addEventListener('click', () => {
+      shortcutsModalOverlay.classList.remove('visible');
+    });
+
+    shortcutsModalOverlay.addEventListener('click', (e) => {
+      if (e.target === shortcutsModalOverlay) {
+        shortcutsModalOverlay.classList.remove('visible');
+      }
+    });
+
+    realtimeToggle.addEventListener('click', () => {
+      realtimeFeedback = !realtimeFeedback;
+      realtimeToggle.classList.toggle('active', realtimeFeedback);
+      localStorage.setItem('memoryFlashRealtime', realtimeFeedback.toString());
+    });
+
+    keepCorrectToggle.addEventListener('click', () => {
+      keepCorrectDigits = !keepCorrectDigits;
+      keepCorrectToggle.classList.toggle('active', keepCorrectDigits);
+      localStorage.setItem('memoryFlashKeepCorrect', keepCorrectDigits.toString());
+    });
+
+    // Initialize toggle states
+    realtimeToggle.classList.toggle('active', realtimeFeedback);
+    keepCorrectToggle.classList.toggle('active', keepCorrectDigits);
+  </script>
+</body>
+</html>
